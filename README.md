@@ -1,6 +1,6 @@
 # Getting acquinted with Augment Vision
 
-This exercise introduces the core products of UUG through one complete media flow:
+This exercise introduces the core products of Augment Vision through one complete media flow:
 
 ```text
 Camera -> Agent -> Hub -> Workflow -> Your stage -> Marker -> Hub timeline
