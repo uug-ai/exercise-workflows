@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 
 	ingest "github.com/uug-ai/ingest/pkg/ingest"
 	"github.com/uug-ai/models/pkg/models"
 )
 
-const operation = "loitering"
+const operation = "forwarder"
+const invocationSchemaV1 = "uug.ai/workflow-invocation/v1"
 
 var runIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 
@@ -23,22 +25,20 @@ func measureLoitering(stageOperation string, start, duration int64) models.Marke
 	}
 }
 
-func handleRun(body []byte, stageOperation string, start, duration int64) (map[string]json.RawMessage, error) {
-	var run map[string]json.RawMessage
-	if json.Unmarshal(body, &run) != nil || run == nil {
-		return nil, errors.New("expected a WorkflowRun JSON object")
+func handleInvocation(body []byte, stageOperation string, start, duration int64) (map[string]json.RawMessage, error) {
+	var invocation map[string]json.RawMessage
+	if json.Unmarshal(body, &invocation) != nil || invocation == nil {
+		return nil, errors.New("expected a workflow invocation JSON object")
 	}
-	for _, field := range []string{"runId", "operation", "key"} {
-		var value string
-		if json.Unmarshal(run[field], &value) != nil || value == "" {
-			return nil, fmt.Errorf("missing or invalid %s", field)
-		}
-		if field == "operation" && value != stageOperation {
-			return nil, errors.New("dispatch operation does not match STAGE_OPERATION")
-		}
-		if field == "runId" && !runIDPattern.MatchString(value) {
-			return nil, errors.New("invalid runId")
-		}
+	runID, dispatchOperation, err := dispatchIdentity(invocation)
+	if err != nil {
+		return nil, err
+	}
+	if dispatchOperation != stageOperation {
+		return nil, fmt.Errorf("dispatch operation %q does not match STAGE_OPERATION %q", dispatchOperation, stageOperation)
+	}
+	if !runIDPattern.MatchString(runID) {
+		return nil, errors.New("invalid runId")
 	}
 	if start < 1 || start > 253402300799 || duration < 1 || duration > 3600 || start > 253402300799-duration {
 		return nil, errors.New("provide a valid Unix-seconds marker start and duration of 1..3600 seconds")
@@ -56,18 +56,31 @@ func handleRun(body []byte, stageOperation string, start, duration int64) (map[s
 		return nil, err
 	}
 
-	result := run
-	if raw, exists := result["user"]; exists && string(raw) != "null" {
-		var user map[string]json.RawMessage
-		if json.Unmarshal(raw, &user) != nil || user == nil {
-			return nil, errors.New("invalid user context")
-		}
-		delete(user, "storage")
-		result["user"], _ = json.Marshal(user)
+	result := map[string]json.RawMessage{
+		"runId":     invocation["runId"],
+		"operation": json.RawMessage(strconv.Quote(dispatchOperation)),
 	}
-	delete(result, "storage")
-	delete(result, "signedUrl")
-	delete(result, "results")
 	result["payload"] = envelope
 	return result, nil
+}
+
+func dispatchIdentity(invocation map[string]json.RawMessage) (runID, dispatchOperation string, err error) {
+	if json.Unmarshal(invocation["runId"], &runID) != nil || runID == "" {
+		return "", "", errors.New("missing or invalid runId")
+	}
+
+	var schema string
+	if json.Unmarshal(invocation["schema"], &schema) != nil || schema == "" {
+		return "", "", errors.New("missing or invalid schema")
+	}
+	if schema != invocationSchemaV1 {
+		return "", "", fmt.Errorf("unsupported invocation schema %q", schema)
+	}
+	var stage struct {
+		Operation string `json:"operation"`
+	}
+	if json.Unmarshal(invocation["stage"], &stage) != nil || stage.Operation == "" {
+		return "", "", errors.New("missing or invalid stage.operation")
+	}
+	return runID, stage.Operation, nil
 }

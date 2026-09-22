@@ -107,8 +107,7 @@ The intended UI flow is to create a workflow, select your Agent/device as its
 source, add a custom stage, and assign its operation ID and queue. This UI flow
 is not yet available for this exercise. For now, ask the facilitator to provide
 an already routed test queue and its matching operation ID (default sample:
-`loitering`). Do not invent another queue name: the worker reads exactly the
-queue you configure.
+`forwarder`). Do not invent another queue name: the worker reads exactly the queue you configure.
 
 The facilitator must provision the queue, routing and a user with read access
 to that queue in the assigned virtual host. The worker does not declare queues,
@@ -142,7 +141,7 @@ this repository as the VS Code folder so `${workspaceFolder}` points here.
 For the equivalent terminal run and the tests:
 
 ```bash
-MARKER_START_TIMESTAMP=1700000000 go run . -input examples/workflow-run.json
+MARKER_START_TIMESTAMP=1700000000 go run . -input examples/workflow-invocation.json
 go test ./...
 ```
 
@@ -154,18 +153,22 @@ It does not download video, run a model, or actually detect loitering. The
 sample interval is 30 seconds; the platform derives marker duration.
 The code follows the tutorial's main entry point and loitering stage:
 
-- [main.go](main.go): connect to RabbitMQ, consume a run, call `handleRun`,
+- [main.go](main.go): connect to RabbitMQ, consume an invocation, call
+  `handleInvocation`,
   and acknowledge only after delivery of the result.
 - [loiter.go](loiter.go): `measureLoitering` builds a `models.Marker`, then
-  `handleRun` wraps it in `ingest.BlockEnvelope` and strips credentials.
+  `handleInvocation` wraps it in `ingest.BlockEnvelope`.
 - [support.go](support.go): exercise configuration, preview output and the
   bearer-authenticated HTTP callback, kept separate from the tutorial flow.
 
 The marker and block envelope use the same shared packages as the tutorial.
-The incoming run stays as raw JSON fields to preserve ownership and context
-even when the broker's model version differs. The RabbitMQ client uses explicit
+The worker accepts only the current `uug.ai/workflow-invocation/v1` contract,
+which identifies the stage through `stage.operation`. Its result is rebuilt
+from the run ID, operation and generated payload so credential-bearing
+invocation fields are not echoed. The RabbitMQ client uses explicit
 acknowledgements for preview/requeue and HTTP completion instead of the
-tutorial's queue-to-queue forwarding. These are intentional exercise adaptations.
+tutorial's queue-to-queue forwarding. These are intentional exercise
+adaptations.
 
 ### 4. Enter your test queue credentials
 
@@ -188,7 +191,7 @@ commit it or share it in screenshots. The profiles override only
 | `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD` | Your broker credentials |
 | `RABBITMQ_VHOST` | Assigned virtual host, often `/` |
 | `STAGE_QUEUE` | Exact existing queue that receives your dispatches |
-| `STAGE_OPERATION` | Must match the dispatch's `operation`, default `loitering` |
+| `STAGE_OPERATION` | Must match the invocation's `stage.operation`, default `forwarder` |
 | `MARKER_START_TIMESTAMP` | Start of the test recording, in Unix seconds |
 | `MARKER_DURATION_SECONDS` | Interval within that recording, default `30`, maximum `3600` |
 | `RESULT_MODE` | Keep `preview` until the callback API exists |
@@ -243,18 +246,17 @@ Content-Type: application/json
 Idempotency-Key: <runId>:<operation>
 ```
 
-The body is the received `WorkflowRun` with a marker envelope on `payload`:
+The body is a credential-free result derived from the invocation:
 
 ```json
 {
   "runId": "665f1b2c3d4e5f6071829304",
-  "operation": "loitering",
-  "key": "front-gate/1700000000.mp4",
+  "operation": "forwarder",
   "payload": {
     "blocks": [{
       "type": "marker",
       "data": {
-        "name": "loitering-example",
+        "name": "forwarder-example",
         "description": "Synthetic tutorial marker; not a real loitering detection",
         "startTimestamp": 1700000000,
         "endTimestamp": 1700000030
@@ -264,10 +266,8 @@ The body is the received `WorkflowRun` with a marker envelope on `payload`:
 }
 ```
 
-Existing identity/context fields are preserved, including `traceId`, device,
-user, workflow and canonical ownership fields. `storage`, `signedUrl` and
-`user.storage` are removed. Upstream `results` is removed so only `payload`
-is submitted as the result channel. No ownership is invented from provenance.
+The invocation itself is not echoed, so credentials and unrelated input fields
+cannot leak into the result.
 
 After the facilitator confirms the endpoint, request body, success semantics
 and token issuance are implemented, select **Stage: HTTP callback (API pending)**

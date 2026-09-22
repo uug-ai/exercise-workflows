@@ -8,7 +8,7 @@
       "mode": "auto",
       "program": "${workspaceFolder}",
       "cwd": "${workspaceFolder}",
-      "args": ["-input", "examples/workflow-run.json"],
+      "args": ["-input", "examples/workflow-invocation.json"],
       "envFile": "${workspaceFolder}/.env",
       "env": {
         "RESULT_MODE": "preview"

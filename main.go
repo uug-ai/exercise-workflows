@@ -22,7 +22,7 @@ func main() {
 }
 
 func run() error {
-	input := flag.String("input", "", "process a local WorkflowRun JSON file without RabbitMQ or HTTP")
+	input := flag.String("input", "", "process a local workflow invocation JSON file without RabbitMQ or HTTP")
 	once := flag.Bool("once", false, "exit after one delivery (preview always exits after one)")
 	flag.Parse()
 	settings, err := loadConfig(*input != "")
@@ -34,7 +34,7 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		result, err := handleRun(body, settings.operation, settings.start, settings.duration)
+		result, err := handleInvocation(body, settings.operation, settings.start, settings.duration)
 		if err != nil {
 			return err
 		}
@@ -46,7 +46,7 @@ func run() error {
 }
 
 func handleDelivery(ctx context.Context, settings config, delivery amqp.Delivery, output io.Writer) error {
-	result, err := handleRun(delivery.Body, settings.operation, settings.start, settings.duration)
+	result, err := handleInvocation(delivery.Body, settings.operation, settings.start, settings.duration)
 	if err == nil {
 		if settings.mode == "http" {
 			err = postResult(ctx, settings, result)
@@ -81,7 +81,7 @@ func consume(ctx context.Context, settings config, once bool) error {
 	if err != nil {
 		return errors.New("cannot consume STAGE_QUEUE; confirm it exists in this vhost and the account has read permission")
 	}
-	log.Printf("waiting for a WorkflowRun (mode=%s); Ctrl+C to stop", settings.mode)
+	log.Printf("waiting for a workflow invocation (mode=%s); Ctrl+C to stop", settings.mode)
 	for {
 		select {
 		case <-ctx.Done():

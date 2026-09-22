@@ -32,19 +32,19 @@ func TestDelivery(t *testing.T) {
 		wantError        bool
 		wantAck          bool
 	}{
-		{"success", "http", sampleRun, 204, false, true},
-		{"unauthorized", "http", sampleRun, 401, true, false},
-		{"unimplemented", "http", sampleRun, 404, true, false},
-		{"server failure", "http", sampleRun, 500, true, false},
-		{"redirect", "http", sampleRun, 302, true, false},
-		{"preview", "preview", sampleRun, 0, false, false},
+		{"success", "http", sampleInvocation, 204, false, true},
+		{"unauthorized", "http", sampleInvocation, 401, true, false},
+		{"unimplemented", "http", sampleInvocation, 404, true, false},
+		{"server failure", "http", sampleInvocation, 500, true, false},
+		{"redirect", "http", sampleInvocation, 302, true, false},
+		{"preview", "preview", sampleInvocation, 0, false, false},
 		{"invalid dispatch", "http", "{}", 0, true, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			calls := 0
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 				calls++
-				if request.Method != "POST" || request.URL.Path != "/workflows/665f1b2c3d4e5f6071829304" || request.Header.Get("Authorization") != "Bearer test-token" || request.Header.Get("Content-Type") != "application/json" || request.Header.Get("Idempotency-Key") != "665f1b2c3d4e5f6071829304:loitering" {
+				if request.Method != "POST" || request.URL.Path != "/workflows/665f1b2c3d4e5f6071829304" || request.Header.Get("Authorization") != "Bearer test-token" || request.Header.Get("Content-Type") != "application/json" || request.Header.Get("Idempotency-Key") != "665f1b2c3d4e5f6071829304:forwarder" {
 					t.Error("incorrect callback request")
 				}
 				body, _ := io.ReadAll(request.Body)
@@ -56,7 +56,7 @@ func TestDelivery(t *testing.T) {
 				writer.WriteHeader(test.status)
 			}))
 			defer server.Close()
-			settings := config{operation: "loitering", mode: test.mode, callbackURL: server.URL + "/workflows/{runId}", token: "test-token", start: 1700000000, duration: 30}
+			settings := config{operation: "forwarder", mode: test.mode, callbackURL: server.URL + "/workflows/{runId}", token: "test-token", start: 1700000000, duration: 30}
 			ack := &acknowledgements{}
 			err := handleDelivery(context.Background(), settings, amqp.Delivery{Body: []byte(test.body), Acknowledger: ack}, io.Discard)
 			if (err != nil) != test.wantError {

@@ -1,0 +1,16 @@
+{
+  "schema": "uug.ai/workflow-invocation/v1",
+  "executionId": "wfx_example",
+  "deliveryId": "wfx_example",
+  "runId": "665f1b2c3d4e5f6071829304",
+  "workflow": {
+    "id": "exercise-workflow",
+    "name": "Introduction"
+  },
+  "stage": {
+    "operation": "forwarder"
+  },
+  "tenant": {
+    "organisationId": "64f0a1b2c3d4e5f600112233"
+  }
+}
