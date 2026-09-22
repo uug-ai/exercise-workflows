@@ -132,14 +132,21 @@ this repository root with `GOWORK=off` if you are using the monorepo.
 
 ### 3. Try the stage offline
 
-No credentials, broker, or callback server are needed:
+In **Run and Debug**, select **Stage: offline sample** and press **F5** (or
+**Ctrl+F5** to run without debugging). No credentials, broker, or callback
+server are needed. If the Go extension asks to install Delve, accept the
+debugger installation.
+
+The profiles are defined in [.vscode/launch.json](.vscode/launch.json). Open
+this repository as the VS Code folder so `${workspaceFolder}` points here.
+For the equivalent terminal run and the tests:
 
 ```bash
 MARKER_START_TIMESTAMP=1700000000 go run . -input examples/workflow-run.json
 go test ./...
 ```
 
-The first command prints the run ID, operation and marker envelope.
+The offline profile or first command prints the run ID, operation and marker envelope.
 `-input` always previews locally, even when HTTP mode is configured.
 
 Like the tutorial's starter code, this stage produces a **synthetic marker**.
@@ -162,14 +169,16 @@ tutorial's queue-to-queue forwarding. These are intentional exercise adaptations
 
 ### 4. Enter your test queue credentials
 
-```bash
-cp .env.example .env
-chmod 600 .env
-```
+Select **Stage: queue preview** in **Run and Debug**. On launch, VS Code asks
+for your broker host, username, password, queue name and recording timestamp.
+The password prompt is masked and the value is not written to the launch file.
+No env file is required or loaded.
 
-Edit the ignored `.env` file using [.env.example](.env.example) as the template.
-The worker loads it automatically; already exported environment variables win.
-Use `-env-file /path/to/file` for another dotenv file.
+The profile passes these settings directly as environment variables. Adjust
+the non-secret `env` values in [.vscode/launch.json](.vscode/launch.json) if
+your facilitator assigns a different TLS setting, virtual host, operation or
+marker duration. Keep passwords and bearer tokens in the input prompts, not
+as literals in the committed configuration.
 
 | Variable | Value |
 | --- | --- |
@@ -197,9 +206,9 @@ the dev container; use a hostname reachable from the container.
 
 ### 5. Consume a real dispatch now
 
-```bash
-go run .
-```
+Press **F5** with **Stage: queue preview** selected and answer the prompts.
+For terminal use, export the same environment variables yourself and run
+`go run .`; terminal commands do not inherit the launch profile's settings.
 
 Trigger a recording, or have the facilitator dispatch/re-analyse your test
 recording. The worker waits for a message, builds the marker, prints a limited
@@ -213,7 +222,7 @@ Malformed messages and processing failures also requeue and stop the worker,
 avoiding an immediate retry loop. Ask the facilitator to fix/quarantine an
 invalid message rather than repeatedly restarting against it. Ctrl+C or a
 disconnection leaves unacknowledged deliveries for RabbitMQ to recover. A
-connection failure stops the process; rerun it after fixing connectivity.
+connection failure stops the process; launch it again after fixing connectivity.
 
 ### 6. Post results to Hub (API pending)
 
@@ -254,21 +263,15 @@ user, workflow and canonical ownership fields. `storage`, `signedUrl` and
 is submitted as the result channel. No ownership is invented from provenance.
 
 After the facilitator confirms the endpoint, request body, success semantics
-and token issuance are implemented, set these values in your private env file:
-
-```dotenv
-RESULT_MODE=http
-WORKFLOW_RESULT_URL=https://your-hub-api.example.com/workflows/{runId}
-WORKFLOW_BEARER_TOKEN=your-issued-token
-```
+and token issuance are implemented, select **Stage: HTTP callback (API pending)**
+and press **F5**. This profile sets `RESULT_MODE=http` and `-once`, prompts for
+the broker settings and callback URL, and uses a masked prompt for your bearer
+token. It passes the URL and token as `WORKFLOW_RESULT_URL` and
+`WORKFLOW_BEARER_TOKEN` without storing them in the launch file.
 
 Include an API prefix in the URL if required, for example `/api/workflows/{runId}`.
 The intended spelling is `/workflows`, not `/worfklows`. This is a proposed
 workflow-completion API, not the existing standalone `/ingest` API.
-
-```bash
-go run . -once
-```
 
 HTTP mode acknowledges RabbitMQ only after a `2xx` response. A timeout,
 redirect, `401`, `404`, or other non-success requeues the message and exits
