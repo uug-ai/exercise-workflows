@@ -38,7 +38,9 @@ func TestDelivery(t *testing.T) {
 		{"server failure", "http", sampleInvocation, 500, true, false},
 		{"redirect", "http", sampleInvocation, 302, true, false},
 		{"preview", "preview", sampleInvocation, 0, false, false},
+		{"bypass", "bypass", sampleInvocation, 0, false, true},
 		{"invalid dispatch", "http", "{}", 0, true, false},
+		{"invalid bypass dispatch", "bypass", "{}", 0, true, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			calls := 0
@@ -110,5 +112,12 @@ func TestBrokerConfiguration(t *testing.T) {
 	parsed, err = amqp.ParseURI(settings.brokerURL)
 	if err != nil || parsed.Vhost != "/" {
 		t.Fatal("default vhost did not round-trip")
+	}
+
+	t.Setenv("RESULT_MODE", "bypass")
+	t.Setenv("WORKFLOW_RESULT_URL", "")
+	t.Setenv("WORKFLOW_BEARER_TOKEN", "")
+	if _, err := loadConfig(false); err != nil {
+		t.Fatalf("bypass mode required callback configuration: %v", err)
 	}
 }

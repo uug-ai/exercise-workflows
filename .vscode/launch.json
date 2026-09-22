@@ -10,9 +10,8 @@
       "cwd": "${workspaceFolder}",
       "args": ["-input", "examples/workflow-invocation.json"],
       "envFile": "${workspaceFolder}/.env",
-      "env": {
-        "RESULT_MODE": "preview"
-      }
+
+      
     },
     {
       "name": "Stage: queue preview",
@@ -24,6 +23,18 @@
       "envFile": "${workspaceFolder}/.env",
       "env": {
         "RESULT_MODE": "preview"
+      }
+    },
+    {
+      "name": "Stage: queue bypass",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "RESULT_MODE": "bypass"
       }
     },
     {

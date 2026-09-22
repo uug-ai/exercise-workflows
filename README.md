@@ -182,7 +182,7 @@ cp .env.example .env
 
 All Run and Debug profiles load `.env`. The file is ignored by Git; never
 commit it or share it in screenshots. The profiles override only
-`RESULT_MODE`, selecting `preview` or `http` as appropriate.
+`RESULT_MODE`, selecting `preview`, `bypass` or `http` as appropriate.
 
 | Variable | Value |
 | --- | --- |
@@ -194,7 +194,7 @@ commit it or share it in screenshots. The profiles override only
 | `STAGE_OPERATION` | Must match the invocation's `stage.operation`, default `forwarder` |
 | `MARKER_START_TIMESTAMP` | Start of the test recording, in Unix seconds |
 | `MARKER_DURATION_SECONDS` | Interval within that recording, default `30`, maximum `3600` |
-| `RESULT_MODE` | Keep `preview` until the callback API exists |
+| `RESULT_MODE` | `preview` requeues one message; `bypass` acknowledges without a callback; `http` posts the result |
 
 Use the actual recording timestamp, not the current time or the fixture's
 timestamp, for live dispatches. Keep the same interval on retries so marker
@@ -227,6 +227,13 @@ message and exits**. Nothing is posted to Hub and no marker is persisted yet.
 Repeating the command may show the same message. Preview is not a broker peek:
 it changes redelivery state and can count toward a configured delivery limit;
 use the offline fixture for repeated experimentation.
+
+To drain valid messages without calling `WORKFLOW_RESULT_URL`, select
+**Stage: queue bypass** or set `RESULT_MODE=bypass`. Bypass prints the same
+credential-free result, acknowledges the message, and continues consuming
+until stopped. This permanently removes successfully processed messages from
+the queue without resolving their workflow stage in Hub. Use `-once` to stop
+after one acknowledged message.
 
 Malformed messages and processing failures also requeue and stop the worker,
 avoiding an immediate retry loop. Ask the facilitator to fix/quarantine an

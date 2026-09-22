@@ -97,7 +97,11 @@ func consume(ctx context.Context, settings config, once bool) error {
 				log.Print("preview only: message requeued, no result submitted to Hub")
 				return nil
 			}
-			log.Print("result accepted by callback; delivery acknowledged")
+			if settings.mode == "bypass" {
+				log.Print("bypass: message processed and acknowledged, no result submitted to Hub")
+			} else {
+				log.Print("result accepted by callback; delivery acknowledged")
+			}
 			if once {
 				return nil
 			}

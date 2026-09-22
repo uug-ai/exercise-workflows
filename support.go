@@ -44,8 +44,8 @@ func loadConfig(offline bool) (config, error) {
 	if offline {
 		return settings, nil
 	}
-	if settings.mode != "preview" && settings.mode != "http" {
-		return settings, errors.New("RESULT_MODE must be preview or http")
+	if settings.mode != "preview" && settings.mode != "bypass" && settings.mode != "http" {
+		return settings, errors.New("RESULT_MODE must be preview, bypass or http")
 	}
 	if settings.mode == "http" {
 		if strings.TrimSpace(settings.token) == "" || strings.ContainsAny(settings.token, "\r\n") {
