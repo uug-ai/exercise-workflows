@@ -39,7 +39,8 @@ recordings, and sends them to Hub for central processing and review.
 ### 1. Register and get the Hub credentials
 
 First, register your Hub account. After registration, ask your tutor to arrange
-a subscription and provide your Hub public access key and Hub private key.
+a subscription and provide your Hub public access key and Hub private key. You
+cannot proceed with this exercise until you have received both keys.
 
 Then sign in to Hub, open **Devices**, and select **Add Agent**. Collect the
 values needed to connect your Agent:
