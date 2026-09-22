@@ -9,11 +9,8 @@
       "program": "${workspaceFolder}",
       "cwd": "${workspaceFolder}",
       "args": ["-input", "examples/workflow-run.json"],
+      "envFile": "${workspaceFolder}/.env",
       "env": {
-        "GOWORK": "off",
-        "STAGE_OPERATION": "loitering",
-        "MARKER_START_TIMESTAMP": "1700000000",
-        "MARKER_DURATION_SECONDS": "30",
         "RESULT_MODE": "preview"
       }
     },
@@ -24,17 +21,8 @@
       "mode": "auto",
       "program": "${workspaceFolder}",
       "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
       "env": {
-        "GOWORK": "off",
-        "RABBITMQ_SCHEME": "amqps",
-        "RABBITMQ_HOST": "${input:brokerHost}",
-        "RABBITMQ_USERNAME": "${input:brokerUsername}",
-        "RABBITMQ_PASSWORD": "${input:brokerPassword}",
-        "RABBITMQ_VHOST": "/",
-        "STAGE_QUEUE": "${input:stageQueue}",
-        "STAGE_OPERATION": "loitering",
-        "MARKER_START_TIMESTAMP": "${input:markerStart}",
-        "MARKER_DURATION_SECONDS": "30",
         "RESULT_MODE": "preview"
       }
     },
@@ -46,60 +34,10 @@
       "program": "${workspaceFolder}",
       "cwd": "${workspaceFolder}",
       "args": ["-once"],
+      "envFile": "${workspaceFolder}/.env",
       "env": {
-        "GOWORK": "off",
-        "RABBITMQ_SCHEME": "amqps",
-        "RABBITMQ_HOST": "${input:brokerHost}",
-        "RABBITMQ_USERNAME": "${input:brokerUsername}",
-        "RABBITMQ_PASSWORD": "${input:brokerPassword}",
-        "RABBITMQ_VHOST": "/",
-        "STAGE_QUEUE": "${input:stageQueue}",
-        "STAGE_OPERATION": "loitering",
-        "MARKER_START_TIMESTAMP": "${input:markerStart}",
-        "MARKER_DURATION_SECONDS": "30",
-        "RESULT_MODE": "http",
-        "WORKFLOW_RESULT_URL": "${input:callbackURL}",
-        "WORKFLOW_BEARER_TOKEN": "${input:bearerToken}"
+        "RESULT_MODE": "http"
       }
-    }
-  ],
-  "inputs": [
-    {
-      "id": "brokerHost",
-      "type": "promptString",
-      "description": "Test RabbitMQ hostname:port (TLS usually uses 5671)"
-    },
-    {
-      "id": "brokerUsername",
-      "type": "promptString",
-      "description": "RabbitMQ username"
-    },
-    {
-      "id": "brokerPassword",
-      "type": "promptString",
-      "description": "RabbitMQ password",
-      "password": true
-    },
-    {
-      "id": "stageQueue",
-      "type": "promptString",
-      "description": "Exact queue assigned by the facilitator"
-    },
-    {
-      "id": "markerStart",
-      "type": "promptString",
-      "description": "Test recording start timestamp in Unix seconds"
-    },
-    {
-      "id": "callbackURL",
-      "type": "promptString",
-      "description": "Confirmed Hub result API URL ending in /workflows/{runId}"
-    },
-    {
-      "id": "bearerToken",
-      "type": "promptString",
-      "description": "Workflow-scoped API bearer token",
-      "password": true
     }
   ]
 }

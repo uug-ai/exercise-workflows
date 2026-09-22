@@ -169,16 +169,17 @@ tutorial's queue-to-queue forwarding. These are intentional exercise adaptations
 
 ### 4. Enter your test queue credentials
 
-Select **Stage: queue preview** in **Run and Debug**. On launch, VS Code asks
-for your broker host, username, password, queue name and recording timestamp.
-The password prompt is masked and the value is not written to the launch file.
-No env file is required or loaded.
+Copy [.env.example](.env.example) to `.env`, then enter the broker host,
+username, password, queue name and recording timestamp supplied by the
+facilitator:
 
-The profile passes these settings directly as environment variables. Adjust
-the non-secret `env` values in [.vscode/launch.json](.vscode/launch.json) if
-your facilitator assigns a different TLS setting, virtual host, operation or
-marker duration. Keep passwords and bearer tokens in the input prompts, not
-as literals in the committed configuration.
+```bash
+cp .env.example .env
+```
+
+All Run and Debug profiles load `.env`. The file is ignored by Git; never
+commit it or share it in screenshots. The profiles override only
+`RESULT_MODE`, selecting `preview` or `http` as appropriate.
 
 | Variable | Value |
 | --- | --- |
@@ -206,9 +207,15 @@ the dev container; use a hostname reachable from the container.
 
 ### 5. Consume a real dispatch now
 
-Press **F5** with **Stage: queue preview** selected and answer the prompts.
-For terminal use, export the same environment variables yourself and run
-`go run .`; terminal commands do not inherit the launch profile's settings.
+Press **F5** with **Stage: queue preview** selected. For terminal use, load
+the same file into the shell before running the stage:
+
+```bash
+set -a
+. ./.env
+set +a
+go run .
+```
 
 Trigger a recording, or have the facilitator dispatch/re-analyse your test
 recording. The worker waits for a message, builds the marker, prints a limited
@@ -264,10 +271,10 @@ is submitted as the result channel. No ownership is invented from provenance.
 
 After the facilitator confirms the endpoint, request body, success semantics
 and token issuance are implemented, select **Stage: HTTP callback (API pending)**
-and press **F5**. This profile sets `RESULT_MODE=http` and `-once`, prompts for
-the broker settings and callback URL, and uses a masked prompt for your bearer
-token. It passes the URL and token as `WORKFLOW_RESULT_URL` and
-`WORKFLOW_BEARER_TOKEN` without storing them in the launch file.
+and press **F5**. Before launching, set `WORKFLOW_RESULT_URL` and
+`WORKFLOW_BEARER_TOKEN` in your ignored `.env` file. This profile sets
+`RESULT_MODE=http` and `-once`; credentials remain outside the committed
+launch configuration.
 
 Include an API prefix in the URL if required, for example `/api/workflows/{runId}`.
 The intended spelling is `/workflows`, not `/worfklows`. This is a proposed
