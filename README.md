@@ -6,25 +6,27 @@ This exercise introduces the Kerberos platform through one complete media flow:
 Camera -> Agent -> Hub -> Workflow -> Your stage -> Marker -> Hub timeline
 ```
 
-By the end, you will have connected a camera to Hub and built a small service
-that receives a recording, processes it, and sends a marker back to the
-platform.
+There are two parts: install an Agent and link it to Hub, then configure a
+workflow and run your own stage. This repository includes a runnable Go stage
+based on the [custom workflow stage tutorial](https://learn.uug.ai/tutorials/hub/custom-workflow-stage/).
 
-Allow about 60-90 minutes. The custom-stage part requires a self-hosted Hub
-deployment. If you only have access to the managed Hub, ask your facilitator
-for a development environment or use the HTTP ingest API to practise the marker
-contract.
+Allow about 60-90 minutes. Today, messages are already landing in a test
+RabbitMQ. You can consume a real dispatch and preview a synthetic marker now.
+Workflow configuration through the UI and the bearer-authenticated result API
+are still to be developed; completing the full loop in Hub depends on those.
 
 ## Prerequisites
 
-- A Hub account and its API URI, public access key, and private key
+- A Hub account and Agent connection credentials
 - An H.264 or H.265 RTSP camera stream
-- Docker
-- For the workflow stage: a self-hosted Hub with workflows, RabbitMQ, and
-  MongoDB enabled
-- `kubectl` and `helm` access to that Hub cluster
-- A container registry to which you can push an image
-- A programming language with a RabbitMQ client; the references use Go
+- Docker on your host for the Agent and dev container
+- VS Code with the Dev Containers extension, or Go 1.25+ installed locally
+- From the facilitator: test RabbitMQ host/port, TLS setting, username,
+  password, virtual host, assigned queue name, and stage operation ID
+- Later: the result API URL and a workflow-scoped bearer token
+
+You do not need Kubernetes, Helm, MongoDB access, or a container registry for
+this exercise. The facilitator manages the workflow and test broker.
 
 Do not commit camera passwords, Hub credentials, broker credentials, or storage
 credentials to this repository.
@@ -83,168 +85,229 @@ For other installation methods and camera troubleshooting, use the
 [Agent installation tutorial](https://doc.kerberos.io/tutorials/agent/install/)
 and [camera connection tutorial](https://doc.kerberos.io/tutorials/agent/connect-any-camera/).
 
-## Part 2: Build a Workflow Stage
+## Part 2: Configure a Workflow and Run the Stage
 
-A workflow is a branch from Hub's standard media pipeline. The workflows engine
-dispatches a `WorkflowRun` to a stage-specific queue. Your service consumes the
-run, processes the referenced recording, and publishes the completed run back
-to the workflows queue.
+```text
+Agent recording -> Hub workflow -> assigned test RabbitMQ queue
+                                         |
+                                    Go stage
+                                         |
+                        preview now / HTTP callback later
+                                         |
+                         POST /workflows/{runId} (pending)
+```
 
-Your stage should perform a small, observable operation on the media. Keep the
-first version simple, for example:
+Unlike the tutorial, this exercise does not publish results to
+`WORKFLOWS_QUEUE`. It uses a local preview until the result API is available,
+then posts the completed run over HTTP.
 
-- Extract one frame and classify it as bright or dark.
-- Read the clip duration and mark its midpoint.
-- Detect a dominant colour in one frame.
-- Run a small model and mark the interval containing a result.
+### 1. Configure the workflow (UI pending)
 
-The goal is to learn the integration path, not to build a production model.
+The intended UI flow is to create a workflow, select your Agent/device as its
+source, add a custom stage, and assign its operation ID and queue. This UI flow
+is not yet available for this exercise. For now, ask the facilitator to provide
+an already routed test queue and its matching operation ID (default sample:
+`loitering`). Do not invent another queue name: the worker reads exactly the
+queue you configure.
 
-### 1. Define the stage
+The facilitator must provision the queue, routing and a user with read access
+to that queue in the assigned virtual host. The worker does not declare queues,
+exchanges or bindings and needs no broker management or publish permissions.
+Use a dedicated queue per participant; consumers on one queue compete for
+messages, they do not each receive a copy.
 
-Choose these values and record them in your pull request:
+### 2. Open the dev container
 
-| Setting | Example |
+Open the `exercise` repository itself as the VS Code folder, then run
+**Dev Containers: Reopen in Container**. When using the monorepo, open its
+`exercise` subfolder in a separate VS Code window first so VS Code selects
+[.devcontainer/devcontainer.json](.devcontainer/devcontainer.json).
+
+The container installs Go dependencies and runs the tests. It does not start
+an Agent, a broker, or a background consumer. Start the Agent from Part 1 on
+your Docker host, not inside this container.
+
+Without a dev container, install Go 1.25.8+ and run all following commands from
+this repository root with `GOWORK=off` if you are using the monorepo.
+
+### 3. Try the stage offline
+
+No credentials, broker, or callback server are needed:
+
+```bash
+MARKER_START_TIMESTAMP=1700000000 go run . -input examples/workflow-run.json
+go test ./...
+```
+
+The first command prints the run ID, operation and marker envelope.
+`-input` always previews locally, even when HTTP mode is configured.
+
+Like the tutorial's starter code, this stage produces a **synthetic marker**.
+It does not download video, run a model, or actually detect loitering. The
+sample interval is 30 seconds; the platform derives marker duration.
+The code follows the tutorial's main entry point and loitering stage:
+
+- [main.go](main.go): connect to RabbitMQ, consume a run, call `handleRun`,
+  and acknowledge only after delivery of the result.
+- [loiter.go](loiter.go): `measureLoitering` builds a `models.Marker`, then
+  `handleRun` wraps it in `ingest.BlockEnvelope` and strips credentials.
+- [support.go](support.go): exercise configuration, preview output and the
+  bearer-authenticated HTTP callback, kept separate from the tutorial flow.
+
+The marker and block envelope use the same shared packages as the tutorial.
+The incoming run stays as raw JSON fields to preserve ownership and context
+even when the broker's model version differs. The RabbitMQ client uses explicit
+acknowledgements for preview/requeue and HTTP completion instead of the
+tutorial's queue-to-queue forwarding. These are intentional exercise adaptations.
+
+### 4. Enter your test queue credentials
+
+```bash
+cp .env.example .env
+chmod 600 .env
+```
+
+Edit the ignored `.env` file using [.env.example](.env.example) as the template.
+The worker loads it automatically; already exported environment variables win.
+Use `-env-file /path/to/file` for another dotenv file.
+
+| Variable | Value |
 | --- | --- |
-| Operation ID | `introduction-marker` |
-| Stage queue | `hub-workflows-introduction-marker` |
-| Result block type | `marker` |
-| Processing rule | `Mark the midpoint of every recording` |
+| `RABBITMQ_HOST` | Facilitator's broker hostname and port |
+| `RABBITMQ_SCHEME` | `amqps` for TLS, or `amqp` only for an approved trusted test network |
+| `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD` | Your broker credentials |
+| `RABBITMQ_VHOST` | Assigned virtual host, often `/` |
+| `STAGE_QUEUE` | Exact existing queue that receives your dispatches |
+| `STAGE_OPERATION` | Must match the dispatch's `operation`, default `loitering` |
+| `MARKER_START_TIMESTAMP` | Start of the test recording, in Unix seconds |
+| `MARKER_DURATION_SECONDS` | Interval within that recording, default `30`, maximum `3600` |
+| `RESULT_MODE` | Keep `preview` until the callback API exists |
 
-Operation IDs and queue names must be unique in the shared environment.
+Use the actual recording timestamp, not the current time or the fixture's
+timestamp, for live dispatches. Keep the same interval on retries so marker
+identity stays stable. This starter uses one configured interval: test one
+recording at a time; replace `measureLoitering` with media-derived timing before
+processing recordings continuously.
 
-### 2. Implement the worker
+Broker credentials are separate from Agent credentials and the future API
+bearer token. Keep them out of screenshots and commits. Do not disable TLS
+certificate verification; ask the facilitator for a trusted certificate if
+the broker uses a private CA. A broker on your host is not `localhost` inside
+the dev container; use a hostname reachable from the container.
 
-Your service must:
+### 5. Consume a real dispatch now
 
-1. Connect to RabbitMQ using the injected `RABBITMQ_*` variables.
-2. Consume a `WorkflowRun` from its stage queue.
-3. Use `run.key` and the credentials in `run.storage` to fetch the recording.
-4. Process the recording and derive a meaningful timestamp or interval.
-5. Copy the received run, preserve its identity fields, set its operation to
-   your operation ID, and clear `storage` so credentials are not echoed.
-6. Put a block envelope on `payload` and publish the run to
-   `WORKFLOWS_QUEUE`.
-7. Handle redelivery idempotently and emit useful logs containing `runId`,
-   `traceId`, and the media key.
+```bash
+go run .
+```
 
-The returned payload has this shape:
+Trigger a recording, or have the facilitator dispatch/re-analyse your test
+recording. The worker waits for a message, builds the marker, prints a limited
+preview without the raw dispatch or storage credentials, **requeues the
+message and exits**. Nothing is posted to Hub and no marker is persisted yet.
+Repeating the command may show the same message. Preview is not a broker peek:
+it changes redelivery state and can count toward a configured delivery limit;
+use the offline fixture for repeated experimentation.
+
+Malformed messages and processing failures also requeue and stop the worker,
+avoiding an immediate retry loop. Ask the facilitator to fix/quarantine an
+invalid message rather than repeatedly restarting against it. Ctrl+C or a
+disconnection leaves unacknowledged deliveries for RabbitMQ to recover. A
+connection failure stops the process; rerun it after fixing connectivity.
+
+### 6. Post results to Hub (API pending)
+
+This repo includes the client, **not the Hub endpoint or token issuer**.
+The proposed contract is:
+
+```http
+POST /workflows/{runId}
+Authorization: Bearer <workflow-scoped-token>
+Content-Type: application/json
+Idempotency-Key: <runId>:<operation>
+```
+
+The body is the received `WorkflowRun` with a marker envelope on `payload`:
 
 ```json
 {
-  "blocks": [
-    {
+  "runId": "665f1b2c3d4e5f6071829304",
+  "operation": "loitering",
+  "key": "front-gate/1700000000.mp4",
+  "payload": {
+    "blocks": [{
       "type": "marker",
       "data": {
-        "name": "introduction-result",
-        "startTimestamp": 1752482068,
-        "endTimestamp": 1752482073,
-        "duration": 5,
-        "description": "Result produced by the introduction stage",
-        "categories": [{ "name": "exercise" }],
-        "tags": [{ "name": "introduction-marker" }]
+        "name": "loitering-example",
+        "description": "Synthetic tutorial marker; not a real loitering detection",
+        "startTimestamp": 1700000000,
+        "endTimestamp": 1700000030
       }
-    }
-  ]
+    }]
+  }
 }
 ```
 
-Marker timestamps are Unix seconds, not milliseconds, frame numbers, or offsets.
-The platform supplies organisation and device ownership from the persisted run;
-do not accept or invent those fields in the marker. A marker is upserted by its
-device, name, and start timestamp, so keep those values stable on redelivery.
+Existing identity/context fields are preserved, including `traceId`, device,
+user, workflow and canonical ownership fields. `storage`, `signedUrl` and
+`user.storage` are removed. Upstream `results` is removed so only `payload`
+is submitted as the result channel. No ownership is invented from provenance.
 
-Start from one of these references:
+After the facilitator confirms the endpoint, request body, success semantics
+and token issuance are implemented, set these values in your private env file:
 
-- [`hub-speed`](https://github.com/uug-ai/hub-workflows/tree/main/services/hub-speed):
-  a compact worker scaffold intended to be copied and adapted
-- [`hub-loitering`](https://github.com/uug-ai/hub-loitering): a complete marker
-  stage
-- [Custom workflow stage tutorial](https://doc.kerberos.io/tutorials/hub/custom-workflow-stage/):
-  the full queue, implementation, container, and deployment walkthrough
-- [Marker contract](https://doc.kerberos.io/docs/hub/workflows/ingest/blocks/marker/):
-  accepted marker fields and persistence behaviour
-
-Keep processing logic separate from queue transport so it can be unit tested
-without RabbitMQ.
-
-### 3. Test and package the stage
-
-At minimum, add tests that prove:
-
-- A valid run produces the expected marker interval.
-- A redelivered run produces the same marker identity.
-- Invalid or missing media does not produce a successful result.
-- Storage credentials are absent from the returned run.
-
-Build a container image and push a versioned tag to your registry. Do not use
-`latest` for the deployed stage.
-
-### 4. Register the workflow and service
-
-Add the stage and its deployment to the Hub Helm values. The stage and service
-names must match, and the queue must match the queue consumed by your worker:
-
-```yaml
-kerberoshub:
-  workflows:
-    enabled: true
-    stages:
-      introduction-marker:
-        enabled: true
-        dispatch: always
-
-  services:
-    introduction-marker:
-      enabled: true
-      repository: ghcr.io/your-org/hub-introduction-marker
-      tag: "v0.1.0"
-      queue: "hub-workflows-introduction-marker"
-      replicas: 1
-      pullPolicy: IfNotPresent
-      logLevel: info
+```dotenv
+RESULT_MODE=http
+WORKFLOW_RESULT_URL=https://your-hub-api.example.com/workflows/{runId}
+WORKFLOW_BEARER_TOKEN=your-issued-token
 ```
 
-Use `dispatch: always` while proving the wiring. Once it works, add a condition
-so the stage only runs for relevant media. Apply the values using your
-environment's normal deployment process.
-
-### 5. Verify the complete flow
-
-Trigger a new Agent recording, then verify each boundary:
-
-1. The recording appears in Hub.
-2. `hub-workflows` logs a dispatch to your operation and queue.
-3. Your worker logs that it fetched and processed the recording.
-4. Your worker publishes a result to `WORKFLOWS_QUEUE` without storage
-   credentials.
-5. The workflow run completes without an unresolved stage.
-6. The marker appears at the expected position on the recording timeline and
-   in **Analysis > Markers** when that feature is enabled.
-
-Useful commands:
+Include an API prefix in the URL if required, for example `/api/workflows/{runId}`.
+The intended spelling is `/workflows`, not `/worfklows`. This is a proposed
+workflow-completion API, not the existing standalone `/ingest` API.
 
 ```bash
-kubectl -n kerberos-hub logs deploy/hub-workflows -f
-kubectl -n kerberos-hub logs deploy/hub-introduction-marker -f
+go run . -once
 ```
 
-Part 2 is complete when a recording created by your Agent is processed by your
-stage and its marker is visible in Hub.
+HTTP mode acknowledges RabbitMQ only after a `2xx` response. A timeout,
+redirect, `401`, `404`, or other non-success requeues the message and exits
+nonzero. Redirects are not followed; HTTPS is required except for loopback
+test servers. Do not use HTTP mode against an endpoint that merely accepts
+and discards results. Without `-once`, successful HTTP mode continues consuming.
+
+Once available, verify that the workflow stage resolves and the marker appears
+at the expected time on the recording in Hub. A successful preview alone does
+not demonstrate this.
+
+### Platform Work Still Required
+
+- Workflow UI: select device, configure operation/queue, and activate routing.
+- Result API: implement `POST /workflows/{runId}` and confirm the body contract.
+- Token issuance: scoped bearer tokens with expiry/revocation and permissions
+  limited to the intended organisation, project, workflow and stage.
+- Server authorization: look up the persisted run, validate access and expected
+  operation, and derive ownership from that run rather than trusting the body.
+- Completion: ingest the blocks and resolve the stage durably before success;
+  deduplicate repeated `runId`/operation callbacks. A lost HTTP response can
+  cause replay even when the first request succeeded.
+
+These are follow-up tasks in the Hub repositories, not implemented here.
 
 ## Completion Checklist
 
-- [ ] Agent runs with a unique device key.
-- [ ] Camera preview and recording work locally.
-- [ ] Agent is online and its recording is playable in Hub.
-- [ ] A versioned stage image is deployed.
-- [ ] A workflow dispatches recordings to the stage.
-- [ ] The stage reads actual media and returns a valid marker block.
-- [ ] Returned runs do not contain storage credentials.
-- [ ] Reprocessing does not create duplicate markers.
-- [ ] The marker is visible on the recording timeline.
+- [ ] Agent has a unique device key and a working camera preview.
+- [ ] Agent is online and a recording is playable in Hub.
+- [ ] Dev container opens and `go test ./...` passes.
+- [ ] Offline sample produces the expected marker interval.
+- [ ] Assigned test queue produces a preview without leaking credentials.
+- [ ] Pending UI: workflow is configured through Hub.
+- [ ] Pending API: bearer-authenticated callback resolves the stage.
+- [ ] Pending end-to-end check: marker is visible and retries do not duplicate it.
 
-When you submit the exercise, include the stage source, tests, deployment
-configuration, and a short note describing what the stage processes. Include
-logs or screenshots that demonstrate the final Agent-to-marker flow, with all
-credentials redacted.
+Submit a short note describing what you ran and which pending steps remain,
+with redacted logs/screenshots. As an extension, replace the synthetic marker
+with real classification trajectory analysis or downloaded-media processing;
+the [finished loitering service](https://github.com/uug-ai/hub-loitering) and
+[marker contract](https://learn.uug.ai/docs/hub/workflows/ingest/blocks/marker/)
+provide the next steps.

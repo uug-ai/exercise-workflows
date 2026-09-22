@@ -1,0 +1,17 @@
+{
+  "name": "Hub workflow exercise",
+  "image": "mcr.microsoft.com/devcontainers/go:1-1.25-bookworm",
+  "remoteUser": "vscode",
+  "containerEnv": {
+    "GOWORK": "off"
+  },
+  "postCreateCommand": "go mod download && go test ./...",
+  "customizations": {
+    "vscode": {
+      "extensions": ["golang.Go"],
+      "settings": {
+        "go.useLanguageServer": true
+      }
+    }
+  }
+}
