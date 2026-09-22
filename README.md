@@ -1,4 +1,4 @@
-# Kerberos Platform Introduction
+# Augment Vision getting acquinted
 
 This exercise introduces the Kerberos platform through one complete media flow:
 
@@ -36,14 +36,17 @@ credentials to this repository.
 An Agent runs close to one camera. It reads the camera stream, creates
 recordings, and sends them to Hub for central processing and review.
 
-### 1. Get the Hub credentials
+### 1. Register and get the Hub credentials
 
-Sign in to Hub, open **Devices**, and select **Add Agent**. Copy the values shown
-for:
+First, register your Hub account. After registration, ask your tutor to arrange
+a subscription and provide your Hub public access key and Hub private key.
+
+Then sign in to Hub, open **Devices**, and select **Add Agent**. Collect the
+values needed to connect your Agent:
 
 - Hub API URI
-- Public access key
-- Private key
+- Public access key (Hub key)
+- Private key (Hub private key)
 - Site ID, if your environment requires one
 
 ### 2. Start an Agent
