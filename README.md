@@ -1,4 +1,4 @@
-# Augment Vision getting acquinted
+# Getting acquinted with UUG.AI
 
 This exercise introduces the Kerberos platform through one complete media flow:
 
