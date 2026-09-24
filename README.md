@@ -1,64 +1,71 @@
-# Getting acquinted with Augment Vision
+# Augment Vision Workflow Exercise
 
-This exercise introduces the core products of Augment Vision through one complete media flow:
+This repository demonstrates a complete custom workflow stage for Augment
+Vision:
 
 ```text
-Camera -> Agent -> Hub -> Workflow -> Your stage -> Marker -> Hub timeline
+Camera -> Agent -> Hub -> RabbitMQ -> Go stage -> Hub callback
+                                      |
+                                      +-> YOLO person detection
+                                      +-> timeline marker
+                                      +-> recording description
 ```
 
-There are two parts: install an Agent and link it to Hub, then configure a
-workflow and run your own stage. This repository includes a runnable Go stage
-based on the [custom workflow stage tutorial](https://learn.uug.ai/tutorials/hub/custom-workflow-stage/).
+The stage is implemented in Go. It downloads the recording from the signed URL
+in a workflow invocation, runs YOLO11n person detection, and submits the result
+to Hub.
 
-Allow about 60-90 minutes. Messages land in a test RabbitMQ, and the
-bearer-authenticated workflow-run API accepts stage results. You can consume a
-real dispatch, detect people with YOLO and submit a marker back to Hub.
+## Current status
+
+The processing path works end to end:
+
+- Agent recordings arrive in Hub.
+- Hub dispatches workflow invocations through RabbitMQ.
+- The worker downloads the signed media URL.
+- GoCV decodes and samples the video.
+- YOLO11n runs through the Go ONNX Runtime binding.
+- A detected person produces:
+  - a timeline `marker`; and
+  - a `media-patch` that updates the recording description.
+- A recording without a person returns a routing result and does not modify the
+  recording.
+- Hub accepts the bearer-authenticated callback and resolves the workflow
+  stage.
+
+The remaining platform feature is the **visual workflow editor**. Until it is
+available, a facilitator must provision the workflow, RabbitMQ routing, queue,
+and operation ID.
 
 ## Prerequisites
 
-- A Hub account and Agent connection credentials
+- Docker
+- VS Code with the Dev Containers extension
+- A Hub account
+- An Agent public access key and private key
 - An H.264 or H.265 RTSP camera stream
-- Docker on your host for the Agent and dev container
-- VS Code with the Dev Containers extension, or Go 1.25+ installed locally
-- From the facilitator: test RabbitMQ host/port, TLS setting, username,
-  password, virtual host, assigned queue name, and stage operation ID
-- A Hub access token with the `workflow-run.update` scope
+- A facilitator-provided RabbitMQ queue and operation ID
+- A Hub token with the `workflow-run.update` scope
 
-You do not need Kubernetes, Helm, MongoDB access, or a container registry for
-this exercise. The facilitator manages the workflow and test broker.
+The dev container supports `amd64` and `arm64`. It installs Go, OpenCV, ONNX
+Runtime, and the checksum-verified YOLO11n model.
 
-Do not commit camera passwords, Hub credentials, broker credentials, or storage
-credentials to this repository.
+## 1. Connect an Agent
 
-## Part 1: Connect an Agent to Hub
+In Hub, open **Devices**, select **Add Agent**, and collect:
 
-An Agent runs close to one camera. It reads the camera stream, creates
-recordings, and sends them to Hub for central processing and review.
+- the Hub API URI;
+- the public access key;
+- the private key; and
+- the site ID, when required.
 
-### 1. Register and get the Hub credentials
-
-First, register your Hub account. After registration, ask your tutor to arrange
-a subscription and provide your Hub public access key and Hub private key. You
-cannot proceed with this exercise until you have received both keys.
-
-Then sign in to Hub, open **Devices**, and select **Add Agent**. Collect the
-values needed to connect your Agent:
-
-- Hub API URI
-- Public access key (Hub key)
-- Private key (Hub private key)
-- Site ID, if your environment requires one
-
-### 2. Start an Agent
-
-Replace the placeholders and run:
+Start an Agent after replacing the placeholders:
 
 ```bash
 docker run -d --name introduction-agent --restart unless-stopped \
   -p 8080:80 \
   -e AGENT_NAME=introduction-agent \
   -e AGENT_KEY=introduction-agent-<your-name> \
-  -e AGENT_CAPTURE_IPCAMERA_RTSP='rtsp://user:password@camera/stream' \
+  -e AGENT_CAPTURE_IPCAMERA_RTSP='******camera/stream' \
   -e AGENT_CAPTURE_CONTINUOUS=true \
   -e AGENT_CLOUD=s3 \
   -e AGENT_HUB_URI='https://api.example.com' \
@@ -67,182 +74,123 @@ docker run -d --name introduction-agent --restart unless-stopped \
   kerberos/agent:latest
 ```
 
-Add `-e AGENT_HUB_SITE='<site-id>'` when a site was assigned to you. Use a
-unique `AGENT_KEY`; Hub uses it as the stable device identity.
+Add `-e AGENT_HUB_SITE='<site-id>'` when a site is assigned. Use a unique
+`AGENT_KEY`; Hub uses it as the stable device identity.
 
 Open [http://localhost:8080](http://localhost:8080). The default local Agent
 credentials are `root` / `root`; change them before exposing the UI outside
 your machine.
 
-### 3. Verify the connection
+Verify that:
 
-1. Confirm that the camera preview works in the Agent UI.
-2. Check the container logs with `docker logs -f introduction-agent`.
-3. Find `introduction-agent` on the Hub **Devices** page and confirm it is
-   online.
-4. Trigger a recording and confirm that it appears in Hub.
+1. the camera preview works;
+2. the Agent appears online in Hub; and
+3. a recording made by the Agent is playable in Hub.
 
-Part 1 is complete when you can play an Agent recording in Hub.
-
-For other installation methods and camera troubleshooting, use the
+See the
 [Agent installation tutorial](https://doc.kerberos.io/tutorials/agent/install/)
-and [camera connection tutorial](https://doc.kerberos.io/tutorials/agent/connect-any-camera/).
+and
+[camera connection tutorial](https://doc.kerberos.io/tutorials/agent/connect-any-camera/)
+for additional setup options.
 
-## Part 2: Configure a Workflow and Run the Stage
+## 2. Configure workflow routing
 
-```text
-Agent recording -> Hub workflow -> assigned test RabbitMQ queue
-                                         |
-                                    Go stage
-                                         |
-                        preview now / HTTP callback later
-                                         |
-                      POST /workflows/runs/{runId} (pending)
-```
+The intended experience is to use a visual editor to select a device, add the
+custom stage, and connect its outputs. That editor is not yet available.
 
-Unlike the tutorial, this exercise does not publish results to
-`WORKFLOWS_QUEUE`. It uses a local preview until the result API is available,
-then posts the completed run over HTTP.
+For now, ask the facilitator to provide:
 
-### 1. Configure the workflow (UI pending)
+- a RabbitMQ host, port, scheme, username, password, and virtual host;
+- an existing queue that receives workflow invocations;
+- the stage operation assigned to that queue; and
+- a workflow configured to dispatch recordings from your Agent.
 
-The intended UI flow is to create a workflow, select your Agent/device as its
-source, add a custom stage, and assign its operation ID and queue. This UI flow
-is not yet available for this exercise. For now, ask the facilitator to provide
-an already routed test queue and its matching operation ID (default sample:
-`forwarder`). Do not invent another queue name: the worker reads exactly the queue you configure.
+The worker deliberately does not create queues, exchanges, or bindings. It
+requires read access to the assigned queue but no broker management or publish
+permissions. Use a dedicated queue per participant: multiple consumers on one
+queue compete for deliveries.
 
-The facilitator must provision the queue, routing and a user with read access
-to that queue in the assigned virtual host. The worker does not declare queues,
-exchanges or bindings and needs no broker management or publish permissions.
-Use a dedicated queue per participant; consumers on one queue compete for
-messages, they do not each receive a copy.
+## 3. Open the development environment
 
-### 2. Open the dev container
+Open this repository as the VS Code folder and run:
 
-Open the `exercise` repository itself as the VS Code folder, then run
-**Dev Containers: Reopen in Container**. When using the monorepo, open its
-`exercise` subfolder in a separate VS Code window first so VS Code selects
-[.devcontainer/devcontainer.json](.devcontainer/devcontainer.json).
+**Dev Containers: Rebuild and Reopen in Container**
 
-The container installs Go dependencies and runs the tests. It does not start
-an Agent, a broker, or a background consumer. Start the Agent from Part 1 on
-your Docker host, not inside this container.
+Use **Rebuild**, not only **Reopen**, after pulling changes to the
+[dev-container Dockerfile](.devcontainer/Dockerfile). The build installs:
 
-Without a dev container, install Go 1.25.8+ and run all following commands from
-this repository root with `GOWORK=off` if you are using the monorepo.
+- OpenCV 4.6 for video decoding;
+- ONNX Runtime 1.29;
+- the official YOLO11n ONNX model; and
+- Go module dependencies.
 
-### 3. Try the stage offline
+The model and runtime downloads are pinned by SHA-256 checksums.
 
-To process a fixture without RabbitMQ or a callback server, replace the
-placeholder `media.signedUrl` in
-[examples/workflow-invocation.json](examples/workflow-invocation.json) with a
-reachable HTTP or HTTPS URL, then select **Stage: offline sample** in **Run and
-Debug** and press **F5** (or **Ctrl+F5** to run without debugging). The URL must
-return no more than 100 MiB. No broker or callback credentials are needed. If
-the Go extension asks to install Delve, accept the debugger installation.
+The container does not start an Agent, RabbitMQ, or a background worker. Run
+the Agent on the Docker host and start the worker explicitly.
 
-The profiles are defined in [.vscode/launch.json](.vscode/launch.json). Open
-this repository as the VS Code folder so `${workspaceFolder}` points here.
-To debug tests after the internal-package reorganization, select
-**Tests: internal app**. The root package also includes a small entry-point
-smoke test so Delve can launch `.` safely, while behavior tests remain under
-`internal/app`.
-For the equivalent terminal run and the tests:
+Running outside the dev container requires Go 1.25.8+, OpenCV 4.6, ONNX Runtime
+1.29, and a compatible YOLO11n ONNX model. The dev container is the recommended
+environment.
 
-```bash
-MARKER_START_TIMESTAMP=1700000000 go run . -input examples/workflow-invocation.json
-go test ./...
-```
+## 4. Configure the stage
 
-After downloading the fixture's media URL, the offline profile or first
-command prints the run ID, operation and marker envelope. `-input` always
-previews locally, even when HTTP mode is configured.
-
-This stage downloads the signed media URL into a bounded in-memory byte slice,
-samples video frames with GoCV and runs the official YOLO11n ONNX model through
-the Go ONNX Runtime binding. It emits one `person detected` marker covering the
-configured recording interval when any sampled frame meets the confidence
-threshold and a `media-patch` block that writes the same detection summary to
-the recording description. If no person is detected, the stage returns a
-routing `result` summary instead of an ingest `payload`, because Hub requires
-every ingest payload to contain at least one block.
-The code follows the tutorial's main entry point and person-detection stage:
-
-- [main.go](main.go): minimal executable entry point that runs the internal app.
-- [internal/app/worker.go](internal/app/worker.go): connect to RabbitMQ, consume
-  an invocation, call `handleInvocation`, and acknowledge only after delivery
-  of the result.
-- [internal/app/persondetection.go](internal/app/persondetection.go):
-  downloads up to 100 MiB from `media.signedUrl`,
-  `buildPersonMarker` builds a media-linked `models.Marker`, then
-  `handleInvocation` wraps it in the shared `models.WorkflowResult` contract.
-- [internal/app/yolo.go](internal/app/yolo.go): stages the in-memory video in a
-  private temporary file for GoCV, samples frames and performs person-only
-  YOLO inference through the Go ONNX Runtime binding.
-- [internal/app/support.go](internal/app/support.go): exercise configuration,
-  preview output and the bearer-authenticated HTTP callback.
-- [internal/app/logging.go](internal/app/logging.go): structured logging and
-  credential redaction.
-
-The marker and block envelope use the same shared packages as the tutorial.
-The worker accepts only the current `uug.ai/workflow-invocation/v1` contract,
-which identifies the stage through `stage.operation` and provides a top-level
-`callback` object containing the URL, HTTP method and expected result schema.
-Its output is rebuilt from the operation and generated marker so
-credential-bearing invocation fields are not echoed. The RabbitMQ client uses
-explicit acknowledgements for preview/requeue and HTTP completion instead of
-the tutorial's queue-to-queue forwarding. These are intentional exercise
-adaptations.
-
-### 4. Enter your test queue credentials
-
-Copy [.env.example](.env.example) to `.env`, then enter the broker host,
-username, password, queue name and recording timestamp supplied by the
-facilitator:
+Copy the example environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-All Run and Debug profiles load `.env`. The file is ignored by Git; never
-commit it or share it in screenshots. The profiles override only
-`RESULT_MODE`, selecting `preview`, `bypass` or `http` as appropriate.
+The `.env` file is ignored by Git. Never commit it or include its values in
+logs, screenshots, or support messages.
 
-| Variable | Value |
+| Variable | Description |
 | --- | --- |
-| `RABBITMQ_HOST` | Facilitator's broker hostname and port |
-| `RABBITMQ_SCHEME` | `amqps` for TLS, or `amqp` only for an approved trusted test network |
-| `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD` | Your broker credentials |
-| `RABBITMQ_VHOST` | Assigned virtual host, often `/` |
-| `STAGE_QUEUE` | Exact existing queue that receives your dispatches |
-| `STAGE_OPERATION` | Must match the invocation's `stage.operation`, default `forwarder` |
-| `MARKER_START_TIMESTAMP` | Start of the test recording, in Unix seconds |
-| `MARKER_DURATION_SECONDS` | Recording interval covered by a detected-person marker, default `30`, maximum `3600` |
-| `YOLO_MODEL` | YOLO11n ONNX model path; preinstalled in the dev container |
-| `ONNXRUNTIME_SHARED_LIBRARY` | ONNX Runtime shared library path; preinstalled in the dev container |
-| `YOLO_CONFIDENCE` | Person confidence threshold in `(0, 1]`, default `0.5` |
-| `YOLO_SAMPLE_FPS` | Number of video frames analyzed per second, default `1`, maximum `30` |
-| `RESULT_MODE` | `preview` requeues one message; `bypass` acknowledges without a callback; `http` posts the result |
-| `WORKFLOW_BEARER_TOKEN` | Hub access token with the `workflow-run.update` scope; required for HTTP mode |
-| `LOG_LEVEL` | Logrus level, default `info` |
-| `LOG_OUTPUT` | Logrus output format: `text` (default) or `json` |
+| `RABBITMQ_SCHEME` | `amqps` for TLS; use `amqp` only on an approved trusted network |
+| `RABBITMQ_HOST` | Broker hostname and port |
+| `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD` | Broker credentials |
+| `RABBITMQ_VHOST` | Assigned virtual host, commonly `/` |
+| `STAGE_QUEUE` | Existing queue that receives workflow invocations |
+| `STAGE_OPERATION` | Operation expected in `stage.operation`; defaults to `forwarder` |
+| `MARKER_START_TIMESTAMP` | Recording start in Unix seconds |
+| `MARKER_DURATION_SECONDS` | Marker interval in seconds; `1..3600`, default `30` |
+| `YOLO_MODEL` | YOLO11n ONNX model path |
+| `ONNXRUNTIME_SHARED_LIBRARY` | ONNX Runtime shared-library path |
+| `YOLO_CONFIDENCE` | Person confidence threshold in `(0, 1]`; default `0.5` |
+| `YOLO_SAMPLE_FPS` | Frames analyzed per second in `(0, 30]`; default `1` |
+| `RESULT_MODE` | `preview`, `bypass`, or `http` |
+| `WORKFLOW_BEARER_TOKEN` | Hub token with `workflow-run.update`; required in HTTP mode |
+| `LOG_LEVEL` | Logrus level; default `info` |
+| `LOG_OUTPUT` | `text` or `json`; default `text` |
 
-Use the actual recording timestamp, not the current time or the fixture's
-timestamp, for live dispatches. Keep the same interval on retries so marker
-identity stays stable. This example uses one configured marker interval and
-stops inference on the first qualifying person detection.
+Use the recording timestamp supplied for the test. The current example applies
+one configured interval to the detected-person marker; it does not yet derive
+entry and exit timestamps from a person track.
 
-Broker credentials are separate from Agent credentials and the Hub access
-token. Keep them out of screenshots and commits. Do not disable TLS
-certificate verification; ask the facilitator for a trusted certificate if
-the broker uses a private CA. A broker on your host is not `localhost` inside
-the dev container; use a hostname reachable from the container.
+## 5. Run the stage
 
-### 5. Consume a real dispatch now
+VS Code launch profiles are defined in
+[.vscode/launch.json](.vscode/launch.json).
 
-Press **F5** with **Stage: queue preview** selected. For terminal use, load
-the same file into the shell before running the stage:
+### Offline fixture
+
+Replace the placeholder `media.signedUrl` in
+[examples/workflow-invocation.json](examples/workflow-invocation.json) with a
+reachable HTTP or HTTPS video URL no larger than 100 MiB.
+
+Select **Stage: offline sample** in **Run and Debug**, or run:
+
+```bash
+MARKER_START_TIMESTAMP=1700000000 \
+  go run . -input examples/workflow-invocation.json
+```
+
+Offline input always prints a local preview. It does not consume RabbitMQ or
+call Hub.
+
+### Queue preview
+
+Select **Stage: queue preview**, or run:
 
 ```bash
 set -a
@@ -251,46 +199,66 @@ set +a
 go run .
 ```
 
-Trigger a recording, or have the facilitator dispatch/re-analyse your test
-recording. The worker waits for a message, downloads the media into memory,
-builds the marker, prints a limited preview without the raw dispatch or storage
-credentials, **requeues the message and exits**. Nothing is posted to Hub and
-no marker is persisted yet.
-Every received invocation is also logged as structured Logrus context. Secret,
-token, password, credential, private-key and signed-URL fields are redacted;
-credentials and query parameters embedded in URLs are removed.
-The processing handoff logs `media_key`, whether a signed URL is present, and a
-credential-safe `signed_url` with user info, query parameters and fragments
-removed. After download, it logs the byte count without logging media content.
-Repeating the command may show the same message. Preview is not a broker peek:
-it changes redelivery state and can count toward a configured delivery limit;
-use the offline fixture for repeated experimentation.
+Preview mode:
 
-To drain valid messages without calling the invocation's `callback.url`, select
-**Stage: queue bypass** or set `RESULT_MODE=bypass`. Bypass prints the same
-credential-free result, acknowledges the message, and continues consuming
-until stopped. This permanently removes successfully processed messages from
-the queue without resolving their workflow stage in Hub. Use `-once` to stop
-after one acknowledged message.
+1. receives one invocation;
+2. downloads and analyzes the recording;
+3. prints the generated result;
+4. requeues the RabbitMQ delivery; and
+5. exits without calling Hub.
 
-Malformed messages and processing failures also requeue and stop the worker,
-avoiding an immediate retry loop. Ask the facilitator to fix/quarantine an
-invalid message rather than repeatedly restarting against it. Ctrl+C or a
-disconnection leaves unacknowledged deliveries for RabbitMQ to recover. A
-connection failure stops the process; launch it again after fixing connectivity.
+Preview is not a broker peek. It changes redelivery state and may count toward
+a configured delivery limit.
 
-### 6. Post results to Hub
+### Queue bypass
 
-The invocation supplies the run-specific Hub endpoint. The callback contract is:
+Select **Stage: queue bypass** or set `RESULT_MODE=bypass`.
+
+Bypass analyzes and prints each result, acknowledges the delivery, and does not
+call Hub. It permanently removes successful messages from the queue without
+resolving their workflow stages. Use it only for deliberate queue draining.
+
+### HTTP callback
+
+Set `WORKFLOW_BEARER_TOKEN`, select **Stage: HTTP callback**, and trigger a new
+recording or re-analysis.
+
+The worker calls the run-specific endpoint from the invocation:
 
 ```http
 POST /workflows/runs/{runId}
-Authorization: Bearer <workflow-scoped-token>
+Authorization: Bearer <token>
 Content-Type: application/json
 Idempotency-Key: <runId>:<operation>
 ```
 
-The body is a credential-free result derived from the invocation:
+Use `-once` to stop after one acknowledged HTTP delivery:
+
+```bash
+go run . -once
+```
+
+## Processing behavior
+
+For each valid invocation, the worker:
+
+1. validates the schema, run ID, stage operation, callback, media key, and
+   marker interval;
+2. downloads `media.signedUrl` into memory with a two-minute timeout and a
+   100 MiB limit;
+3. stages the bytes in a private temporary file because OpenCV video capture
+   requires a filename;
+4. samples frames at `YOLO_SAMPLE_FPS`;
+5. runs YOLO11n until the first person confidence reaches
+   `YOLO_CONFIDENCE`; and
+6. submits one of the two result forms below.
+
+The temporary file is removed after processing. Signed URL credentials and
+query parameters are redacted from logs.
+
+### Person detected
+
+Hub receives an ingest `payload` containing a marker and media patch:
 
 ```json
 {
@@ -306,11 +274,11 @@ The body is a credential-free result derived from the invocation:
           "siteId": "site-1",
           "organisationId": "org-1",
           "mediaKeys": ["recording.mp4"],
-          "name": "person detected",
-          "description": "YOLO detected a person with 0.91 confidence after analyzing 3 sampled frames",
           "startTimestamp": 1700000000,
           "endTimestamp": 1700000030,
-          "duration": 30
+          "duration": 30,
+          "name": "person detected",
+          "description": "YOLO detected a person with 0.91 confidence after analyzing 3 sampled frames"
         }
       },
       {
@@ -325,75 +293,134 @@ The body is a credential-free result derived from the invocation:
 }
 ```
 
-The invocation itself is not echoed, so credentials and unrelated input fields
-cannot leak into the result.
+The marker is linked directly to the recording through `mediaKeys`. The media
+patch updates the recording description with the same deterministic detection
+summary.
 
-In the Hub UI, generate an access token and grant only the
-`workflow-run.update` scope. Copy it to `WORKFLOW_BEARER_TOKEN` in your ignored
-`.env` file, select **Stage: HTTP callback**, and press **F5**. Never commit or
-share the token; revoke it in Hub when it is no longer needed.
+### No person detected
 
-The worker follows the shared top-level `callback` object in each invocation.
-It requires `method: "POST"` and
-`resultSchema: "uug.ai/workflow-result/v1"`. The launch profile sets
-`RESULT_MODE=http`; credentials remain outside the committed launch
-configuration. Pass `-once` explicitly for a one-delivery terminal run.
+An ingest payload may not contain an empty block list. When no person meets the
+threshold, the worker therefore sends a routing `result` instead:
 
-If an invocation omits `callback` or has an empty `callback.url`, HTTP mode
-prints the generated result, acknowledges that delivery and continues
-consuming. This fallback prevents one incomplete invocation from blocking the
-queue, but it does not resolve that workflow stage in Hub. A non-empty callback
-with an invalid method, schema or URL remains a processing error and is
-requeued.
+```json
+{
+  "schema": "uug.ai/workflow-result/v1",
+  "stage": {
+    "operation": "forwarder"
+  },
+  "result": {
+    "framesAnalyzed": 30,
+    "personDetected": false
+  }
+}
+```
 
-The callback URL may include an API prefix, for example
-`https://api.example.com/api/workflows/runs/665f1b2c3d4e5f6071829304`. Its final
-path segment must match the invocation's run ID. The intended spelling is
-`/workflows`, not `/worfklows`. This is a workflow-completion API, not the
-standalone `/ingest` API.
+This resolves the workflow stage without creating a marker or changing the
+recording description.
 
-HTTP mode acknowledges RabbitMQ only after a `2xx` response. A timeout,
-redirect, `401`, `404`, or other non-success requeues the message and exits
-nonzero. Redirects are not followed; HTTPS is required except for loopback
-test servers. Do not use HTTP mode against an endpoint that merely accepts
-and discards results. Without `-once`, successful HTTP mode continues consuming.
-Submission logs include the validated destination as the structured
-`callback_url` field and the exact serialized request body as `result_payload`,
-together with the run ID, operation and response status. The submitted payload
-is rebuilt locally and contains no invocation credentials.
+## Delivery and retry semantics
 
-After a successful callback, verify that the workflow stage resolves and the
-marker appears at the expected time on the recording in Hub. A successful
-preview alone does not demonstrate this.
+- RabbitMQ uses explicit acknowledgements with a prefetch of one.
+- Preview always requeues its delivery.
+- HTTP mode acknowledges only after a `2xx` callback response.
+- Timeouts, redirects, authorization errors, and other non-`2xx` responses
+  requeue the delivery and stop the worker.
+- Malformed invocations and processing failures also requeue and stop, avoiding
+  an immediate retry loop.
+- Ctrl+C and broker disconnections leave unacknowledged deliveries for
+  RabbitMQ recovery.
+- Callback redirects are not followed.
+- Callback HTTP is allowed only for loopback testing; other endpoints require
+  HTTPS.
 
-### Remaining Exercise Limitations
+If an invocation omits `callback.url`, HTTP mode prints the result and
+acknowledges the delivery, but the workflow stage remains unresolved.
 
-- Workflow UI: select device, configure operation/queue, and activate routing.
-- This sample holds at most 100 MiB of downloaded media in memory and briefly
-  stages it in a private temporary file because OpenCV video capture requires a
-  filename.
-- The marker covers the configured recording interval; the example does not
-  yet derive exact entry/exit timing or persist bounding-box tracks.
-- Production stages should tune frame sampling and confidence for their camera
-  placement and handle idempotent callback retries.
+## Security
 
-These are outside the scope of this starter implementation.
+- Keep Agent, RabbitMQ, storage, and Hub credentials out of Git.
+- Use a Hub token scoped only to `workflow-run.update`.
+- Use TLS for RabbitMQ and callbacks outside an approved local test network.
+- Do not disable certificate validation.
+- Signed URLs, embedded URL credentials, tokens, passwords, storage fields,
+  and private keys are redacted from structured invocation logs.
+- Callback bodies are rebuilt from validated fields instead of echoing the
+  invocation.
+- Media downloads are bounded to 100 MiB.
+- The model and ONNX Runtime archives are checksum verified during the
+  dev-container build.
 
-## Completion Checklist
+## Project layout
 
-- [ ] Agent has a unique device key and a working camera preview.
-- [ ] Agent is online and a recording is playable in Hub.
-- [ ] Dev container opens and `go test ./...` passes.
-- [ ] Offline sample produces the expected marker interval.
-- [ ] Assigned test queue produces a preview without leaking credentials.
-- [ ] Pending UI: workflow is configured through Hub.
-- [ ] Hub access token has only the `workflow-run.update` scope.
-- [ ] Bearer-authenticated callback resolves the stage.
-- [ ] Marker is visible and retries do not duplicate it.
+| Path | Purpose |
+| --- | --- |
+| [main.go](main.go) | Executable entry point |
+| [internal/app/worker.go](internal/app/worker.go) | RabbitMQ consumption and acknowledgement lifecycle |
+| [internal/app/persondetection.go](internal/app/persondetection.go) | Invocation validation, media download, and result construction |
+| [internal/app/yolo.go](internal/app/yolo.go) | GoCV video sampling and Go ONNX inference |
+| [internal/app/support.go](internal/app/support.go) | Configuration, callback validation, and HTTP submission |
+| [internal/app/logging.go](internal/app/logging.go) | Structured logging and credential redaction |
+| [examples/workflow-invocation.json](examples/workflow-invocation.json) | Offline invocation fixture |
+| [.devcontainer/Dockerfile](.devcontainer/Dockerfile) | OpenCV, ONNX Runtime, and YOLO model environment |
 
-Submit a short note describing what you ran and which pending steps remain,
-with redacted logs/screenshots. As an extension, add person tracking and
-media-derived marker timing; the
-[production reference service](https://github.com/uug-ai/hub-loitering) and
-[marker contract](https://learn.uug.ai/docs/hub/workflows/ingest/blocks/marker/)
-provide the next steps.
+## Testing
+
+Run:
+
+```bash
+go test ./...
+go vet ./...
+```
+
+The test suite covers:
+
+- invocation and callback validation;
+- signed-media download behavior and limits;
+- YOLO tensor preprocessing and person-score extraction;
+- marker and media-patch payloads;
+- no-person routing results;
+- callback success and failure handling;
+- RabbitMQ acknowledgement and requeue behavior; and
+- credential redaction.
+
+An opt-in integration test exercises real video decoding and YOLO inference:
+
+```bash
+YOLO_MODEL_INTEGRATION="$YOLO_MODEL" \
+ONNXRUNTIME_SHARED_LIBRARY_INTEGRATION="$ONNXRUNTIME_SHARED_LIBRARY" \
+  go test ./internal/app -run TestYOLOModelIntegration -v
+```
+
+## Remaining work
+
+The backend stage is operational. The main missing platform feature is the
+visual workflow editor for selecting sources, arranging stages, configuring
+operations and queues, and activating routing without facilitator assistance.
+
+Further stage improvements could include:
+
+- person tracking across frames;
+- exact entry and exit timestamps;
+- persisted bounding-box tracks;
+- configurable marker descriptions; and
+- production tuning for camera placement, confidence, and sampling rate.
+
+Useful references:
+
+- [Custom workflow stage tutorial](https://learn.uug.ai/tutorials/hub/custom-workflow-stage/)
+- [Marker contract](https://learn.uug.ai/docs/hub/workflows/ingest/blocks/marker/)
+- [Production reference service](https://github.com/uug-ai/hub-loitering)
+
+## Completion checklist
+
+- [ ] Agent camera preview works.
+- [ ] Agent is online in Hub.
+- [ ] A recording is playable in Hub.
+- [ ] Dev container has been rebuilt successfully.
+- [ ] `go test ./...` passes.
+- [ ] Queue preview analyzes and requeues a real invocation.
+- [ ] Hub token has only `workflow-run.update`.
+- [ ] HTTP callback returns `2xx`.
+- [ ] A person detection creates a marker and updates the recording description.
+- [ ] A no-person result resolves the workflow without changing the recording.
+- [ ] Visual workflow editor is available; until then, routing is provisioned manually.
