@@ -14,6 +14,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type deliveryOutcome int
+
+const (
+	deliverySubmitted deliveryOutcome = iota
+	deliveryPreviewed
+	deliveryBypassed
+	deliveryCallbackMissing
+)
+
 func main() {
 	configureLogging(envOr("LOG_LEVEL", "info"), envOr("LOG_OUTPUT", "text"))
 	if err := run(); err != nil {
@@ -38,33 +47,42 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		result, _, err := handleInvocation(body, settings.operation, settings.start, settings.duration)
+		invocation, err := handleInvocation(body, settings.operation, settings.start, settings.duration)
 		if err != nil {
 			return err
 		}
-		return printPreview(os.Stdout, result)
+		return printPreview(os.Stdout, invocation)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	return consume(ctx, settings, *once)
 }
 
-func handleDelivery(ctx context.Context, settings config, delivery amqp.Delivery, output io.Writer) error {
-	result, callbackURL, err := handleInvocation(delivery.Body, settings.operation, settings.start, settings.duration)
+func handleDelivery(ctx context.Context, settings config, delivery amqp.Delivery, output io.Writer) (deliveryOutcome, error) {
+	invocation, err := handleInvocation(delivery.Body, settings.operation, settings.start, settings.duration)
+	outcome := deliverySubmitted
 	if err == nil {
-		if settings.mode == "http" {
-			err = postResult(ctx, settings, callbackURL, result)
-		} else {
-			err = printPreview(output, result)
+		switch {
+		case settings.mode == "http" && (invocation.callback == nil || invocation.callback.URL == ""):
+			outcome = deliveryCallbackMissing
+			err = printPreview(output, invocation)
+		case settings.mode == "http":
+			err = postResult(ctx, settings, invocation)
+		case settings.mode == "preview":
+			outcome = deliveryPreviewed
+			err = printPreview(output, invocation)
+		default:
+			outcome = deliveryBypassed
+			err = printPreview(output, invocation)
 		}
 	}
 	if err != nil || settings.mode == "preview" {
 		if nackErr := delivery.Nack(false, true); nackErr != nil {
-			return errors.New("could not requeue delivery; closing connection")
+			return outcome, errors.New("could not requeue delivery; closing connection")
 		}
-		return err
+		return outcome, err
 	}
-	return delivery.Ack(false)
+	return outcome, delivery.Ack(false)
 }
 
 func consume(ctx context.Context, settings config, once bool) error {
@@ -99,22 +117,28 @@ func consume(ctx context.Context, settings config, once bool) error {
 				return errors.New("RabbitMQ delivery stream closed; restart the worker to reconnect")
 			}
 			logInvocation(log.StandardLogger(), delivery)
-			if err := handleDelivery(ctx, settings, delivery, os.Stdout); err != nil {
+			outcome, err := handleDelivery(ctx, settings, delivery, os.Stdout)
+			if err != nil {
 				return err
 			}
-			if settings.mode == "preview" {
+			switch outcome {
+			case deliveryPreviewed:
 				log.WithFields(log.Fields{
 					"component": "workflow_stage",
 					"event":     "workflow_invocation_previewed",
 				}).Info("Preview only: message requeued, no result submitted to Hub")
 				return nil
-			}
-			if settings.mode == "bypass" {
+			case deliveryBypassed:
 				log.WithFields(log.Fields{
 					"component": "workflow_stage",
 					"event":     "workflow_invocation_bypassed",
 				}).Info("Bypass: message processed and acknowledged, no result submitted to Hub")
-			} else {
+			case deliveryCallbackMissing:
+				log.WithFields(log.Fields{
+					"component": "workflow_stage",
+					"event":     "workflow_callback_missing",
+				}).Warn("Callback URL missing: result previewed and delivery acknowledged")
+			case deliverySubmitted:
 				log.WithFields(log.Fields{
 					"component": "workflow_stage",
 					"event":     "workflow_result_accepted",

@@ -1,9 +1,12 @@
 {
   "schema": "uug.ai/workflow-invocation/v1",
   "executionId": "wfx_example",
-  "deliveryId": "wfx_example",
   "runId": "665f1b2c3d4e5f6071829304",
-  "callbackUrl": "https://api.example.com/workflows/665f1b2c3d4e5f6071829304",
+  "callback": {
+    "url": "https://api.example.com/workflows/runs/665f1b2c3d4e5f6071829304",
+    "method": "POST",
+    "resultSchema": "uug.ai/workflow-result/v1"
+  },
   "workflow": {
     "id": "exercise-workflow",
     "name": "Introduction"

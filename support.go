@@ -14,6 +14,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
+	"github.com/uug-ai/models/pkg/models"
 )
 
 type config struct {
@@ -72,10 +75,13 @@ func loadConfig(offline bool) (config, error) {
 	return settings, nil
 }
 
-func validateCallback(callbackURL, runID string) error {
-	endpoint, err := url.Parse(callbackURL)
-	if err != nil || endpoint.Host == "" || endpoint.User != nil || endpoint.RawQuery != "" || endpoint.Fragment != "" || !strings.HasSuffix(endpoint.Path, "/workflows/"+runID) {
-		return errors.New("callbackUrl must end with /workflows/<runId>, without credentials, query or fragment")
+func validateCallback(callback *models.WorkflowCallback, runID string) error {
+	if callback == nil || callback.URL == "" || callback.Method != models.WorkflowCallbackMethodPost || callback.ResultSchema != models.WorkflowResultSchemaV1 {
+		return errors.New("callback must provide a URL, POST method and uug.ai/workflow-result/v1 result schema")
+	}
+	endpoint, err := url.Parse(callback.URL)
+	if err != nil || endpoint.Host == "" || endpoint.User != nil || endpoint.RawQuery != "" || endpoint.Fragment != "" || !strings.Contains(endpoint.Path, "/workflows/") || !strings.HasSuffix(endpoint.Path, "/"+runID) {
+		return errors.New("callback.url must be a credential-free workflow URL whose final path segment is runId")
 	}
 	loopback := endpoint.Hostname() == "localhost" || endpoint.Hostname() == "127.0.0.1" || endpoint.Hostname() == "::1"
 	if endpoint.Scheme != "https" && !(endpoint.Scheme == "http" && loopback) {
@@ -84,39 +90,69 @@ func validateCallback(callbackURL, runID string) error {
 	return nil
 }
 
-func postResult(ctx context.Context, settings config, callbackURL string, result map[string]json.RawMessage) error {
-	var runID string
-	if json.Unmarshal(result["runId"], &runID) != nil || !runIDPattern.MatchString(runID) {
+func postResult(ctx context.Context, settings config, invocation handledInvocation) error {
+	if !runIDPattern.MatchString(invocation.runID) {
 		return errors.New("invalid callback runId")
 	}
-	body, err := json.Marshal(result)
+	if invocation.callback == nil || invocation.callback.URL == "" {
+		return errors.New("cannot post result without callback.url")
+	}
+	body, err := json.Marshal(invocation.result)
 	if err != nil {
 		return errors.New("cannot encode callback body")
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, callbackURL, bytes.NewReader(body))
+	request, err := http.NewRequestWithContext(ctx, invocation.callback.Method, invocation.callback.URL, bytes.NewReader(body))
 	if err != nil {
 		return errors.New("cannot create callback request")
 	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "Bearer "+settings.token)
-	request.Header.Set("Idempotency-Key", runID+":"+settings.operation)
+	request.Header.Set("Idempotency-Key", invocation.runID+":"+settings.operation)
+	log.WithFields(callbackLogFields(invocation, settings.operation, "workflow_result_submitting")).
+		Info("Submitting workflow result")
 	client := &http.Client{
 		Timeout:       30 * time.Second,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
 	response, err := client.Do(request)
 	if err != nil {
-		return errors.New("callback request failed; check endpoint availability and TLS")
+		log.WithError(err).
+			WithFields(callbackLogFields(invocation, settings.operation, "workflow_result_submission_failed")).
+			Error("Workflow callback request failed")
+		return fmt.Errorf("callback request to %s failed; check endpoint availability and TLS", invocation.callback.URL)
 	}
 	defer response.Body.Close()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return fmt.Errorf("callback returned HTTP %d; message will remain available for replay", response.StatusCode)
+		log.WithFields(callbackLogFields(invocation, settings.operation, "workflow_result_rejected")).
+			WithField("status_code", response.StatusCode).
+			Error("Workflow callback rejected result")
+		return fmt.Errorf("callback %s returned HTTP %d; message will remain available for replay", invocation.callback.URL, response.StatusCode)
 	}
+	log.WithFields(callbackLogFields(invocation, settings.operation, "workflow_result_submitted")).
+		WithField("status_code", response.StatusCode).
+		Info("Workflow result submitted")
 	return nil
 }
 
-func printPreview(output io.Writer, result map[string]json.RawMessage) error {
-	return json.NewEncoder(output).Encode(map[string]json.RawMessage{
-		"runId": result["runId"], "operation": result["operation"], "payload": result["payload"],
+func callbackLogFields(invocation handledInvocation, operation, event string) log.Fields {
+	fields := log.Fields{
+		"component": "workflow_stage",
+		"event":     event,
+		"operation": operation,
+		"run_id":    invocation.runID,
+	}
+	if invocation.callback != nil {
+		fields["callback_url"] = invocation.callback.URL
+	}
+	return fields
+}
+
+func printPreview(output io.Writer, invocation handledInvocation) error {
+	return json.NewEncoder(output).Encode(struct {
+		RunID string `json:"runId"`
+		models.WorkflowResult
+	}{
+		RunID:          invocation.runID,
+		WorkflowResult: invocation.result,
 	})
 }

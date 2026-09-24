@@ -98,7 +98,7 @@ Agent recording -> Hub workflow -> assigned test RabbitMQ queue
                                          |
                         preview now / HTTP callback later
                                          |
-                         POST /workflows/{runId} (pending)
+                      POST /workflows/runs/{runId} (pending)
 ```
 
 Unlike the tutorial, this exercise does not publish results to
@@ -161,18 +161,18 @@ The code follows the tutorial's main entry point and loitering stage:
   `handleInvocation`,
   and acknowledge only after delivery of the result.
 - [loiter.go](loiter.go): `measureLoitering` builds a `models.Marker`, then
-  `handleInvocation` wraps it in `ingest.BlockEnvelope`.
+  `handleInvocation` wraps it in the shared `models.WorkflowResult` contract.
 - [support.go](support.go): exercise configuration, preview output and the
   bearer-authenticated HTTP callback, kept separate from the tutorial flow.
 
 The marker and block envelope use the same shared packages as the tutorial.
 The worker accepts only the current `uug.ai/workflow-invocation/v1` contract,
-which identifies the stage through `stage.operation` and provides a concrete
-top-level `callbackUrl` for that run. Its result is rebuilt from the run ID,
-operation and generated payload so credential-bearing invocation fields are
-not echoed. The RabbitMQ client uses explicit
-acknowledgements for preview/requeue and HTTP completion instead of the
-tutorial's queue-to-queue forwarding. These are intentional exercise
+which identifies the stage through `stage.operation` and provides a top-level
+`callback` object containing the URL, HTTP method and expected result schema.
+Its result is rebuilt from the operation and generated marker so
+credential-bearing invocation fields are not echoed. The RabbitMQ client uses
+explicit acknowledgements for preview/requeue and HTTP completion instead of
+the tutorial's queue-to-queue forwarding. These are intentional exercise
 adaptations.
 
 ### 4. Enter your test queue credentials
@@ -238,7 +238,7 @@ Repeating the command may show the same message. Preview is not a broker peek:
 it changes redelivery state and can count toward a configured delivery limit;
 use the offline fixture for repeated experimentation.
 
-To drain valid messages without calling the invocation's `callbackUrl`, select
+To drain valid messages without calling the invocation's `callback.url`, select
 **Stage: queue bypass** or set `RESULT_MODE=bypass`. Bypass prints the same
 credential-free result, acknowledges the message, and continues consuming
 until stopped. This permanently removes successfully processed messages from
@@ -257,7 +257,7 @@ This repo includes the client, **not the Hub endpoint or token issuer**.
 The proposed contract is:
 
 ```http
-POST /workflows/{runId}
+POST /workflows/runs/{runId}
 Authorization: Bearer <workflow-scoped-token>
 Content-Type: application/json
 Idempotency-Key: <runId>:<operation>
@@ -267,9 +267,11 @@ The body is a credential-free result derived from the invocation:
 
 ```json
 {
-  "runId": "665f1b2c3d4e5f6071829304",
-  "operation": "forwarder",
-  "payload": {
+  "schema": "uug.ai/workflow-result/v1",
+  "stage": {
+    "operation": "forwarder"
+  },
+  "result": {
     "blocks": [{
       "type": "marker",
       "data": {
@@ -288,22 +290,33 @@ cannot leak into the result.
 
 After the facilitator confirms the endpoint, request body, success semantics
 and token issuance are implemented, select **Stage: HTTP callback (API pending)**
-and press **F5**. The worker posts to the concrete top-level `callbackUrl` in
-each invocation. Before launching, set `WORKFLOW_BEARER_TOKEN` in your ignored
-`.env` file. This profile sets `RESULT_MODE=http` and `-once`; credentials
-remain outside the committed launch configuration.
+and press **F5**. The worker follows the shared top-level `callback` object in
+each invocation. It requires `method: "POST"` and
+`resultSchema: "uug.ai/workflow-result/v1"`. Before launching, set
+`WORKFLOW_BEARER_TOKEN` in your ignored `.env` file. This profile sets
+`RESULT_MODE=http`; credentials remain outside the committed launch
+configuration. Pass `-once` explicitly for a one-delivery terminal run.
+
+If an invocation omits `callback` or has an empty `callback.url`, HTTP mode
+prints the generated result, acknowledges that delivery and continues
+consuming. This fallback prevents one incomplete invocation from blocking the
+queue, but it does not resolve that workflow stage in Hub. A non-empty callback
+with an invalid method, schema or URL remains a processing error and is
+requeued.
 
 The callback URL may include an API prefix, for example
-`https://api.example.com/api/workflows/665f1b2c3d4e5f6071829304`. It must end in
-`/workflows/<runId>` for the invocation's run ID. The intended spelling is
-`/workflows`, not `/worfklows`. This is a proposed workflow-completion API, not
-the existing standalone `/ingest` API.
+`https://api.example.com/api/workflows/runs/665f1b2c3d4e5f6071829304`. Its final
+path segment must match the invocation's run ID. The intended spelling is
+`/workflows`, not `/worfklows`. This is a workflow-completion API, not the
+standalone `/ingest` API.
 
 HTTP mode acknowledges RabbitMQ only after a `2xx` response. A timeout,
 redirect, `401`, `404`, or other non-success requeues the message and exits
 nonzero. Redirects are not followed; HTTPS is required except for loopback
 test servers. Do not use HTTP mode against an endpoint that merely accepts
 and discards results. Without `-once`, successful HTTP mode continues consuming.
+Submission logs include the validated destination as the structured
+`callback_url` field, together with the run ID, operation and response status.
 
 Once available, verify that the workflow stage resolves and the marker appears
 at the expected time on the recording in Hub. A successful preview alone does
@@ -312,7 +325,7 @@ not demonstrate this.
 ### Platform Work Still Required
 
 - Workflow UI: select device, configure operation/queue, and activate routing.
-- Result API: implement `POST /workflows/{runId}` and confirm the body contract.
+- Result API: implement `POST /workflows/runs/{runId}` and confirm the body contract.
 - Token issuance: scoped bearer tokens with expiry/revocation and permissions
   limited to the intended organisation, project, workflow and stage.
 - Server authorization: look up the persisted run, validate access and expected

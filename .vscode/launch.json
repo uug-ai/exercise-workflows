@@ -9,9 +9,7 @@
       "program": "${workspaceFolder}",
       "cwd": "${workspaceFolder}",
       "args": ["-input", "examples/workflow-invocation.json"],
-      "envFile": "${workspaceFolder}/.env",
-
-      
+      "envFile": "${workspaceFolder}/.env"
     },
     {
       "name": "Stage: queue preview",
@@ -44,7 +42,6 @@
       "mode": "auto",
       "program": "${workspaceFolder}",
       "cwd": "${workspaceFolder}",
-      "args": ["-once"],
       "envFile": "${workspaceFolder}/.env",
       "env": {
         "RESULT_MODE": "http"

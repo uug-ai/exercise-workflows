@@ -30,7 +30,8 @@ func TestLogInvocationIncludesRedactedMessage(t *testing.T) {
 	if err := json.Unmarshal(output.Bytes(), &entry); err != nil {
 		t.Fatal(err)
 	}
-	if entry.Event != "workflow_invocation_received" || entry.Invocation["callbackUrl"] != "https://api.example.com/workflows/665f1b2c3d4e5f6071829304" {
+	callback, ok := entry.Invocation["callback"].(map[string]any)
+	if entry.Event != "workflow_invocation_received" || !ok || callback["url"] != "https://api.example.com/workflows/runs/665f1b2c3d4e5f6071829304" {
 		t.Fatalf("unexpected invocation log: %s", output.String())
 	}
 	encoded, err := json.Marshal(entry.Invocation)
