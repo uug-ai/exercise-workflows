@@ -142,6 +142,10 @@ debugger installation.
 
 The profiles are defined in [.vscode/launch.json](.vscode/launch.json). Open
 this repository as the VS Code folder so `${workspaceFolder}` points here.
+To debug tests after the internal-package reorganization, select
+**Tests: internal app**. The root package also includes a small entry-point
+smoke test so Delve can launch `.` safely, while behavior tests remain under
+`internal/app`.
 For the equivalent terminal run and the tests:
 
 ```bash
