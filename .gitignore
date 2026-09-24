@@ -3,4 +3,7 @@
 !.env.example
 /exercise
 /bin/
+/__debug_bin*
+/debug.test
+/debug.test.exe
 coverage.out

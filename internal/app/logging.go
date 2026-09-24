@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"encoding/json"
@@ -12,6 +12,7 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"
+	"github.com/uug-ai/models/pkg/models"
 )
 
 const redactionMarker = "[REDACTED]"
@@ -88,6 +89,23 @@ func logInvocation(logger *log.Logger, delivery amqp.Delivery) {
 	}
 	fields["invocation"] = invocation
 	logger.WithFields(fields).Info("Workflow invocation received")
+}
+
+func logWorkflowMedia(invocation models.WorkflowInvocation) {
+	log.WithFields(workflowMediaLogFields(invocation)).Info("Workflow media ready for processing")
+}
+
+func workflowMediaLogFields(invocation models.WorkflowInvocation) log.Fields {
+	fields := log.Fields{
+		"component":          "workflow_stage",
+		"event":              "workflow_media_ready",
+		"media_key":          invocation.Media.Key,
+		"signed_url_present": invocation.Media.SignedURL != "",
+	}
+	if invocation.Media.SignedURL != "" {
+		fields["signed_url"] = redactURLCredentials(invocation.Media.SignedURL)
+	}
+	return fields
 }
 
 func redactedInvocation(body []byte) (any, error) {

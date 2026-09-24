@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"encoding/json"
@@ -75,8 +75,8 @@ func TestHandleInvocationRejectsInvalidInput(t *testing.T) {
 			t.Errorf("accepted invalid interval: %v", interval)
 		}
 	}
-	mismatch := strings.Replace(sampleInvocation, `"operation":"forwarder"`, `"operation":"loitering"`, 1)
-	if _, err := handleInvocation([]byte(mismatch), "forwarder", 1700000000, 30); err == nil || !strings.Contains(err.Error(), `"loitering"`) {
+	mismatch := strings.Replace(sampleInvocation, `"operation":"forwarder"`, `"operation":"person-detection"`, 1)
+	if _, err := handleInvocation([]byte(mismatch), "forwarder", 1700000000, 30); err == nil || !strings.Contains(err.Error(), `"person-detection"`) {
 		t.Fatalf("operation mismatch was not explained: %v", err)
 	}
 }

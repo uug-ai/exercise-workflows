@@ -16,5 +16,9 @@
   },
   "tenant": {
     "organisationId": "64f0a1b2c3d4e5f600112233"
+  },
+  "media": {
+    "key": "recording.mp4",
+    "signedUrl": "https://media.example.com/recording.mp4?signature=example"
   }
 }

@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"
+	"github.com/uug-ai/models/pkg/models"
 )
 
 func TestLogInvocationIncludesRedactedMessage(t *testing.T) {
@@ -73,5 +74,25 @@ func TestRedactURLCredentials(t *testing.T) {
 	got := redactURLCredentials("https://user:password@example.com/path?signature=SECRET#fragment")
 	if got != "https://example.com/path?"+redactionMarker {
 		t.Fatalf("redactURLCredentials() = %q", got)
+	}
+}
+
+func TestWorkflowMediaLogFieldsRedactSignedURL(t *testing.T) {
+	invocation := models.WorkflowInvocation{
+		Media: models.WorkflowMediaReference{
+			Key:       "recording.mp4",
+			SignedURL: "https://user:password@example.com/recording.mp4?signature=SECRET#fragment",
+		},
+	}
+	fields := workflowMediaLogFields(invocation)
+	if fields["media_key"] != "recording.mp4" || fields["signed_url_present"] != true || fields["signed_url"] != "https://example.com/recording.mp4?"+redactionMarker {
+		t.Fatalf("unexpected media log fields: %+v", fields)
+	}
+	encoded, err := json.Marshal(fields)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "SECRET") || strings.Contains(string(encoded), "password") {
+		t.Fatalf("media log fields leaked signed URL credentials: %s", encoded)
 	}
 }

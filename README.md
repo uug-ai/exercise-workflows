@@ -153,17 +153,21 @@ The offline profile or first command prints the run ID, operation and marker env
 `-input` always previews locally, even when HTTP mode is configured.
 
 Like the tutorial's starter code, this stage produces a **synthetic marker**.
-It does not download video, run a model, or actually detect loitering. The
+It does not download video, run a model, or actually detect people. The
 sample interval is 30 seconds; the platform derives marker duration.
-The code follows the tutorial's main entry point and loitering stage:
+The code follows the tutorial's main entry point and person-detection stage:
 
-- [main.go](main.go): connect to RabbitMQ, consume an invocation, call
-  `handleInvocation`,
-  and acknowledge only after delivery of the result.
-- [loiter.go](loiter.go): `buildCustomMarker` builds a `models.Marker`, then
+- [main.go](main.go): minimal executable entry point that runs the internal app.
+- [internal/app/worker.go](internal/app/worker.go): connect to RabbitMQ, consume
+  an invocation, call `handleInvocation`, and acknowledge only after delivery
+  of the result.
+- [internal/app/persondetection.go](internal/app/persondetection.go):
+  `buildCustomMarker` builds a `models.Marker`, then
   `handleInvocation` wraps it in the shared `models.WorkflowResult` contract.
-- [support.go](support.go): exercise configuration, preview output and the
-  bearer-authenticated HTTP callback, kept separate from the tutorial flow.
+- [internal/app/support.go](internal/app/support.go): exercise configuration,
+  preview output and the bearer-authenticated HTTP callback.
+- [internal/app/logging.go](internal/app/logging.go): structured logging and
+  credential redaction.
 
 The marker and block envelope use the same shared packages as the tutorial.
 The worker accepts only the current `uug.ai/workflow-invocation/v1` contract,
@@ -234,6 +238,9 @@ message and exits**. Nothing is posted to Hub and no marker is persisted yet.
 Every received invocation is also logged as structured Logrus context. Secret,
 token, password, credential, private-key and signed-URL fields are redacted;
 credentials and query parameters embedded in URLs are removed.
+The processing handoff logs `media_key`, whether a signed URL is present, and a
+credential-safe `signed_url` with user info, query parameters and fragments
+removed.
 Repeating the command may show the same message. Preview is not a broker peek:
 it changes redelivery state and can count toward a configured delivery limit;
 use the offline fixture for repeated experimentation.
@@ -352,6 +359,6 @@ These are follow-up tasks in the Hub repositories, not implemented here.
 Submit a short note describing what you ran and which pending steps remain,
 with redacted logs/screenshots. As an extension, replace the synthetic marker
 with real classification trajectory analysis or downloaded-media processing;
-the [finished loitering service](https://github.com/uug-ai/hub-loitering) and
+the [production reference service](https://github.com/uug-ai/hub-loitering) and
 [marker contract](https://learn.uug.ai/docs/hub/workflows/ingest/blocks/marker/)
 provide the next steps.

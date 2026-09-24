@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"encoding/json"
@@ -55,6 +55,10 @@ func handleInvocation(body []byte, stageOperation string, start, duration int64)
 		return handledInvocation{}, errors.New("provide a valid Unix-seconds marker start and duration of 1..3600 seconds")
 	}
 
+	logWorkflowMedia(invocation)
+
+	// Video processing belongs here: retrieve invocation.Media.SignedURL, analyze
+	// the recording, and replace this synthetic interval with media-derived results.
 	marker := buildCustomMarker(start, duration)
 	data, err := json.Marshal(marker)
 	if err != nil {
