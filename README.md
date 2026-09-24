@@ -1,7 +1,45 @@
 # Augment Vision Workflow Exercise
 
-This repository demonstrates a complete custom workflow stage for Augment
-Vision:
+## Goal of the exercise
+
+The goal of this exercise is to help a learner understand the complete Augment
+Vision product flow: how video is captured at the edge, stored and orchestrated
+through Hub, processed by a custom machine-learning stage, and enriched with
+structured feedback that makes recordings searchable and filterable.
+
+By completing the exercise, the learner should be able to:
+
+- explain how Agent, Hub, workflows, RabbitMQ, custom processing stages, and
+  workflow callbacks fit together;
+- configure and run a working end-to-end workflow;
+- process a Hub recording with a custom ML model;
+- return markers and media metadata to Hub;
+- understand how those results support timeline review, search, and filtering;
+  and
+- identify the contracts, runtime behavior, and operational concerns needed to
+  build production features at Augment Vision.
+
+This is a guided but deliberately open-ended exercise. The repository already
+contains a working person-detection example; the learner should first configure
+it and verify the complete flow before changing it. The example is a starting
+point, not the final assignment.
+
+Once the baseline works, learners can adapt the processing logic to a use case
+of their choice. For example, they might:
+
+- count people in a recording;
+- add a counting line and report how many people cross it;
+- detect cars or another object class;
+- identify a domain-specific event; or
+- produce different markers and searchable recording metadata.
+
+The important outcome is not one particular model. It is understanding how to
+integrate custom computer-vision logic into the Augment Vision platform and
+feed useful, structured results back into Hub.
+
+## Working reference implementation
+
+The included Go stage demonstrates the complete flow:
 
 ```text
 Camera -> Agent -> Hub -> RabbitMQ -> Go stage -> Hub callback
@@ -11,9 +49,10 @@ Camera -> Agent -> Hub -> RabbitMQ -> Go stage -> Hub callback
                                       +-> recording description
 ```
 
-The stage is implemented in Go. It downloads the recording from the signed URL
-in a workflow invocation, runs YOLO11n person detection, and submits the result
-to Hub.
+It downloads a recording from the signed URL in a workflow invocation, runs
+YOLO11n person detection, and submits the result to Hub. The implementation is
+ready to run once the Agent, queue, operation, recording interval, and Hub
+callback credentials are configured.
 
 ## Current status
 
