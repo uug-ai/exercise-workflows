@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -50,13 +51,17 @@ func TestDelivery(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			calls := 0
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				if request.Method == http.MethodGet {
+					_, _ = writer.Write([]byte("video"))
+					return
+				}
 				calls++
 				if request.Method != "POST" || request.URL.Path != "/workflows/runs/665f1b2c3d4e5f6071829304" || request.Header.Get("Authorization") != "Bearer test-token" || request.Header.Get("Content-Type") != "application/json" || request.Header.Get("Idempotency-Key") != "665f1b2c3d4e5f6071829304:forwarder" {
 					t.Error("incorrect callback request")
 				}
 				body, _ := io.ReadAll(request.Body)
 				var result models.WorkflowResult
-				if json.Unmarshal(body, &result) != nil || result.Schema != models.WorkflowResultSchemaV1 || result.Stage.Operation != "forwarder" || result.Result["blocks"] == nil || strings.Contains(string(body), "SECRET") {
+				if json.Unmarshal(body, &result) != nil || result.Schema != models.WorkflowResultSchemaV1 || result.Stage.Operation != "forwarder" || len(result.Payload) == 0 || result.Result != nil || strings.Contains(string(body), "SECRET") {
 					t.Error("incorrect callback body")
 				}
 				writer.Header().Set("Location", "/must-not-follow")
@@ -64,7 +69,8 @@ func TestDelivery(t *testing.T) {
 			}))
 			defer server.Close()
 			body := strings.Replace(test.body, "https://api.example.com", server.URL, 1)
-			settings := config{operation: "forwarder", mode: test.mode, token: "test-token", start: 1700000000, duration: 30}
+			body = strings.Replace(body, "https://example.com?secret=SECRET", server.URL+"/recording.mp4?secret=SECRET", 1)
+			settings := config{operation: "forwarder", mode: test.mode, token: "test-token", start: 1700000000, duration: 30, detector: detectedPerson()}
 			ack := &acknowledgements{}
 			outcome, err := handleDelivery(context.Background(), settings, amqp.Delivery{Body: []byte(body), Acknowledger: ack}, io.Discard)
 			if (err != nil) != test.wantError {
@@ -95,20 +101,25 @@ func TestDelivery(t *testing.T) {
 
 func TestCallbackLogFieldsIncludeDestination(t *testing.T) {
 	callback := models.WorkflowCallback{URL: "https://api.example.com/workflows/runs/example-run"}
-	payload := []byte(`{"schema":"uug.ai/workflow-result/v1","stage":{"operation":"forwarder"},"result":{"blocks":[]}}`)
+	payload := []byte(`{"schema":"uug.ai/workflow-result/v1","stage":{"operation":"forwarder"},"payload":{"blocks":[]}}`)
 	fields := callbackLogFields(handledInvocation{runID: "example-run", callback: &callback}, "forwarder", "test_event", payload)
 	if fields["callback_url"] != callback.URL || fields["run_id"] != "example-run" || fields["operation"] != "forwarder" || fields["event"] != "test_event" || fields["result_payload"] != string(payload) {
 		t.Fatalf("unexpected callback log fields: %+v", fields)
 	}
 	var result models.WorkflowResult
-	if err := json.Unmarshal([]byte(fields["result_payload"].(string)), &result); err != nil || result.Schema != models.WorkflowResultSchemaV1 {
+	if err := json.Unmarshal([]byte(fields["result_payload"].(string)), &result); err != nil || result.Schema != models.WorkflowResultSchemaV1 || len(result.Payload) == 0 || result.Result != nil {
 		t.Fatalf("invalid logged result payload: %v, %+v", err, result)
 	}
 }
 
 func TestMissingCallbackPrintsAndAcknowledgesResult(t *testing.T) {
 	body := strings.Replace(sampleInvocation, `"callback":{"url":"https://api.example.com/workflows/runs/665f1b2c3d4e5f6071829304","method":"POST","resultSchema":"uug.ai/workflow-result/v1"},`, "", 1)
-	settings := config{operation: "forwarder", mode: "http", token: "test-token", start: 1700000000, duration: 30}
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		_, _ = writer.Write([]byte("video"))
+	}))
+	defer server.Close()
+	body = strings.Replace(body, "https://example.com?secret=SECRET", server.URL, 1)
+	settings := config{operation: "forwarder", mode: "http", token: "test-token", start: 1700000000, duration: 30, detector: detectedPerson()}
 	ack := &acknowledgements{}
 	var output bytes.Buffer
 
@@ -159,10 +170,19 @@ func TestCallbackValidation(t *testing.T) {
 }
 
 func TestBrokerConfiguration(t *testing.T) {
+	directory := t.TempDir()
+	modelPath := directory + "/yolo.onnx"
+	runtimePath := directory + "/onnxruntime.so"
+	for _, path := range []string{modelPath, runtimePath} {
+		if err := os.WriteFile(path, []byte("runtime"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
 	for name, value := range map[string]string{
 		"RESULT_MODE": "preview", "MARKER_START_TIMESTAMP": "1700000000", "MARKER_DURATION_SECONDS": "30",
 		"RABBITMQ_SCHEME": "amqps", "RABBITMQ_HOST": "localhost:5671", "RABBITMQ_VHOST": "team/one",
 		"RABBITMQ_USERNAME": "user@team", "RABBITMQ_PASSWORD": "p@ss:/#word", "STAGE_QUEUE": "exercise",
+		"YOLO_MODEL": modelPath, "ONNXRUNTIME_SHARED_LIBRARY": runtimePath,
 	} {
 		t.Setenv(name, value)
 	}

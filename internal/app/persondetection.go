@@ -1,20 +1,28 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"regexp"
+	"time"
 
+	log "github.com/sirupsen/logrus"
 	ingest "github.com/uug-ai/ingest/pkg/ingest"
 	"github.com/uug-ai/models/pkg/models"
 )
 
 const operation = "forwarder"
 const invocationSchemaV1 = models.WorkflowInvocationSchemaV1
-const customMarkerName = "custom integration"
+const personMarkerName = "person detected"
+const maxMediaSize = 100 << 20
 
 var runIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
+var signedMediaClient = &http.Client{Timeout: 2 * time.Minute}
 
 type handledInvocation struct {
 	runID    string
@@ -22,16 +30,23 @@ type handledInvocation struct {
 	result   models.WorkflowResult
 }
 
-func buildCustomMarker(start, duration int64) models.Marker {
-	return models.Marker{
-		Name:           customMarkerName,
-		Description:    "Created by the custom workflow integration",
+func buildPersonMarker(invocation models.WorkflowInvocation, detection personDetection, start, duration int64) models.Marker {
+	marker := models.Marker{
+		OrganisationId: invocation.Tenant.OrganisationID,
+		MediaKeys:      []string{invocation.Media.Key},
+		Name:           personMarkerName,
+		Description:    fmt.Sprintf("YOLO detected a person with %.2f confidence after analyzing %d sampled frames", detection.MaxConfidence, detection.FramesAnalyzed),
 		StartTimestamp: start,
 		EndTimestamp:   start + duration,
+		Duration:       duration,
 	}
+	if len(invocation.Device.SiteIDs) > 0 {
+		marker.SiteId = invocation.Device.SiteIDs[0]
+	}
+	return marker
 }
 
-func handleInvocation(body []byte, stageOperation string, start, duration int64) (handledInvocation, error) {
+func handleInvocation(ctx context.Context, body []byte, stageOperation string, start, duration int64, detector personDetector) (handledInvocation, error) {
 	var invocation models.WorkflowInvocation
 	if json.Unmarshal(body, &invocation) != nil {
 		return handledInvocation{}, errors.New("expected a workflow invocation JSON object")
@@ -57,10 +72,46 @@ func handleInvocation(body []byte, stageOperation string, start, duration int64)
 
 	logWorkflowMedia(invocation)
 
-	// Video processing belongs here: retrieve invocation.Media.SignedURL, analyze
-	// the recording, and replace this synthetic interval with media-derived results.
-	marker := buildCustomMarker(start, duration)
-	data, err := json.Marshal(marker)
+	media, err := downloadSignedMedia(ctx, invocation.Media.SignedURL)
+	if err != nil {
+		return handledInvocation{}, err
+	}
+	log.WithFields(log.Fields{
+		"component":        "workflow_stage",
+		"event":            "workflow_media_downloaded",
+		"media_key":        invocation.Media.Key,
+		"media_size_bytes": len(media),
+	}).Info("Workflow media downloaded into memory")
+
+	if detector == nil {
+		return handledInvocation{}, errors.New("YOLO person detector is not configured")
+	}
+	detection, err := detector.Detect(ctx, media)
+	if err != nil {
+		return handledInvocation{}, err
+	}
+	log.WithFields(log.Fields{
+		"component":       "workflow_stage",
+		"event":           "yolo_person_detection_completed",
+		"frames_analyzed": detection.FramesAnalyzed,
+		"max_confidence":  detection.MaxConfidence,
+		"person_detected": detection.Detected,
+	}).Info("YOLO person detection completed")
+
+	blocks := make([]ingest.Block, 0, 1)
+	if detection.Detected {
+		marker := buildPersonMarker(invocation, detection, start, duration)
+		data, err := json.Marshal(marker)
+		if err != nil {
+			return handledInvocation{}, err
+		}
+		blocks = append(blocks, ingest.Block{Type: ingest.KindMarker, Data: data})
+	}
+	payload, err := json.Marshal(struct {
+		Blocks []ingest.Block `json:"blocks"`
+	}{
+		Blocks: blocks,
+	})
 	if err != nil {
 		return handledInvocation{}, err
 	}
@@ -69,13 +120,44 @@ func handleInvocation(body []byte, stageOperation string, start, duration int64)
 		runID:    runID,
 		callback: callback,
 		result: models.WorkflowResult{
-			Schema: models.WorkflowResultSchemaV1,
-			Stage:  models.WorkflowStageReference{Operation: dispatchOperation},
-			Result: map[string]any{
-				"blocks": []ingest.Block{{Type: ingest.KindMarker, Data: data}},
-			},
+			Schema:  models.WorkflowResultSchemaV1,
+			Stage:   models.WorkflowStageReference{Operation: dispatchOperation},
+			Payload: payload,
 		},
 	}, nil
+}
+
+func downloadSignedMedia(ctx context.Context, signedURL string) ([]byte, error) {
+	endpoint, err := url.Parse(signedURL)
+	if err != nil || endpoint.Host == "" || endpoint.User != nil || endpoint.Scheme != "http" && endpoint.Scheme != "https" {
+		return nil, errors.New("media.signedUrl must be an absolute HTTP or HTTPS URL without user credentials")
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
+	if err != nil {
+		return nil, errors.New("cannot create signed media request")
+	}
+	response, err := signedMediaClient.Do(request)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("signed media download canceled: %w", ctx.Err())
+		}
+		return nil, errors.New("signed media download request failed")
+	}
+	defer response.Body.Close()
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("signed media download returned HTTP %d", response.StatusCode)
+	}
+	if response.ContentLength > maxMediaSize {
+		return nil, fmt.Errorf("signed media exceeds the %d-byte in-memory limit", maxMediaSize)
+	}
+	media, err := io.ReadAll(io.LimitReader(response.Body, maxMediaSize+1))
+	if err != nil {
+		return nil, errors.New("cannot read signed media response")
+	}
+	if len(media) > maxMediaSize {
+		return nil, fmt.Errorf("signed media exceeds the %d-byte in-memory limit", maxMediaSize)
+	}
+	return media, nil
 }
 
 func dispatchMetadata(invocation models.WorkflowInvocation) (runID, dispatchOperation string, callback *models.WorkflowCallback, err error) {

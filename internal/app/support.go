@@ -22,6 +22,7 @@ import (
 type config struct {
 	operation, mode, token, brokerURL, queue string
 	start, duration                          int64
+	detector                                 personDetector
 }
 
 func envOr(name, fallback string) string {
@@ -43,6 +44,11 @@ func loadConfig(offline bool) (config, error) {
 	if settings.start < 1 || settings.start > 253402300799-settings.duration || settings.duration < 1 || settings.duration > 3600 {
 		return settings, errors.New("set MARKER_START_TIMESTAMP to the recording's Unix seconds and MARKER_DURATION_SECONDS to 1..3600")
 	}
+	detector, err := newYOLOPersonDetector()
+	if err != nil {
+		return settings, err
+	}
+	settings.detector = detector
 	if offline {
 		return settings, nil
 	}

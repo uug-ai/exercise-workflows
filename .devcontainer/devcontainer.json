@@ -1,6 +1,9 @@
 {
   "name": "Hub workflow exercise",
-  "image": "mcr.microsoft.com/devcontainers/go:1.25-bookworm",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
   "remoteUser": "vscode",
   "containerEnv": {
     "GOWORK": "off"

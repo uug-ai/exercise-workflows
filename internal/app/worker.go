@@ -48,7 +48,7 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		invocation, err := handleInvocation(body, settings.operation, settings.start, settings.duration)
+		invocation, err := handleInvocation(context.Background(), body, settings.operation, settings.start, settings.duration, settings.detector)
 		if err != nil {
 			return err
 		}
@@ -60,7 +60,7 @@ func run() error {
 }
 
 func handleDelivery(ctx context.Context, settings config, delivery amqp.Delivery, output io.Writer) (deliveryOutcome, error) {
-	invocation, err := handleInvocation(delivery.Body, settings.operation, settings.start, settings.duration)
+	invocation, err := handleInvocation(ctx, delivery.Body, settings.operation, settings.start, settings.duration, settings.detector)
 	outcome := deliverySubmitted
 	if err == nil {
 		switch {

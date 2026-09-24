@@ -12,7 +12,7 @@ based on the [custom workflow stage tutorial](https://learn.uug.ai/tutorials/hub
 
 Allow about 60-90 minutes. Messages land in a test RabbitMQ, and the
 bearer-authenticated workflow-run API accepts stage results. You can consume a
-real dispatch, generate a synthetic marker and submit it back to Hub.
+real dispatch, detect people with YOLO and submit a marker back to Hub.
 
 ## Prerequisites
 
@@ -134,10 +134,13 @@ this repository root with `GOWORK=off` if you are using the monorepo.
 
 ### 3. Try the stage offline
 
-In **Run and Debug**, select **Stage: offline sample** and press **F5** (or
-**Ctrl+F5** to run without debugging). No credentials, broker, or callback
-server are needed. If the Go extension asks to install Delve, accept the
-debugger installation.
+To process a fixture without RabbitMQ or a callback server, replace the
+placeholder `media.signedUrl` in
+[examples/workflow-invocation.json](examples/workflow-invocation.json) with a
+reachable HTTP or HTTPS URL, then select **Stage: offline sample** in **Run and
+Debug** and press **F5** (or **Ctrl+F5** to run without debugging). The URL must
+return no more than 100 MiB. No broker or callback credentials are needed. If
+the Go extension asks to install Delve, accept the debugger installation.
 
 The profiles are defined in [.vscode/launch.json](.vscode/launch.json). Open
 this repository as the VS Code folder so `${workspaceFolder}` points here.
@@ -152,12 +155,16 @@ MARKER_START_TIMESTAMP=1700000000 go run . -input examples/workflow-invocation.j
 go test ./...
 ```
 
-The offline profile or first command prints the run ID, operation and marker envelope.
-`-input` always previews locally, even when HTTP mode is configured.
+After downloading the fixture's media URL, the offline profile or first
+command prints the run ID, operation and marker envelope. `-input` always
+previews locally, even when HTTP mode is configured.
 
-Like the tutorial's starter code, this stage produces a **synthetic marker**.
-It does not download video, run a model, or actually detect people. The
-sample interval is 30 seconds; the platform derives marker duration.
+This stage downloads the signed media URL into a bounded in-memory byte slice,
+samples video frames with GoCV and runs the official YOLO11n ONNX model through
+the Go ONNX Runtime binding. It emits one `person detected` marker covering the
+configured recording interval when any sampled frame meets the confidence
+threshold. If no person is detected, the payload contains an empty `blocks`
+array.
 The code follows the tutorial's main entry point and person-detection stage:
 
 - [main.go](main.go): minimal executable entry point that runs the internal app.
@@ -165,8 +172,12 @@ The code follows the tutorial's main entry point and person-detection stage:
   an invocation, call `handleInvocation`, and acknowledge only after delivery
   of the result.
 - [internal/app/persondetection.go](internal/app/persondetection.go):
-  `buildCustomMarker` builds a `models.Marker`, then
+  downloads up to 100 MiB from `media.signedUrl`,
+  `buildPersonMarker` builds a media-linked `models.Marker`, then
   `handleInvocation` wraps it in the shared `models.WorkflowResult` contract.
+- [internal/app/yolo.go](internal/app/yolo.go): stages the in-memory video in a
+  private temporary file for GoCV, samples frames and performs person-only
+  YOLO inference through the Go ONNX Runtime binding.
 - [internal/app/support.go](internal/app/support.go): exercise configuration,
   preview output and the bearer-authenticated HTTP callback.
 - [internal/app/logging.go](internal/app/logging.go): structured logging and
@@ -176,7 +187,7 @@ The marker and block envelope use the same shared packages as the tutorial.
 The worker accepts only the current `uug.ai/workflow-invocation/v1` contract,
 which identifies the stage through `stage.operation` and provides a top-level
 `callback` object containing the URL, HTTP method and expected result schema.
-Its result is rebuilt from the operation and generated marker so
+Its output is rebuilt from the operation and generated marker so
 credential-bearing invocation fields are not echoed. The RabbitMQ client uses
 explicit acknowledgements for preview/requeue and HTTP completion instead of
 the tutorial's queue-to-queue forwarding. These are intentional exercise
@@ -205,7 +216,11 @@ commit it or share it in screenshots. The profiles override only
 | `STAGE_QUEUE` | Exact existing queue that receives your dispatches |
 | `STAGE_OPERATION` | Must match the invocation's `stage.operation`, default `forwarder` |
 | `MARKER_START_TIMESTAMP` | Start of the test recording, in Unix seconds |
-| `MARKER_DURATION_SECONDS` | Interval within that recording, default `30`, maximum `3600` |
+| `MARKER_DURATION_SECONDS` | Recording interval covered by a detected-person marker, default `30`, maximum `3600` |
+| `YOLO_MODEL` | YOLO11n ONNX model path; preinstalled in the dev container |
+| `ONNXRUNTIME_SHARED_LIBRARY` | ONNX Runtime shared library path; preinstalled in the dev container |
+| `YOLO_CONFIDENCE` | Person confidence threshold in `(0, 1]`, default `0.5` |
+| `YOLO_SAMPLE_FPS` | Number of video frames analyzed per second, default `1`, maximum `30` |
 | `RESULT_MODE` | `preview` requeues one message; `bypass` acknowledges without a callback; `http` posts the result |
 | `WORKFLOW_BEARER_TOKEN` | Hub access token with the `workflow-run.update` scope; required for HTTP mode |
 | `LOG_LEVEL` | Logrus level, default `info` |
@@ -213,9 +228,8 @@ commit it or share it in screenshots. The profiles override only
 
 Use the actual recording timestamp, not the current time or the fixture's
 timestamp, for live dispatches. Keep the same interval on retries so marker
-identity stays stable. This starter uses one configured interval: test one
-recording at a time; replace `buildCustomMarker` with media-derived timing before
-processing recordings continuously.
+identity stays stable. This example uses one configured marker interval and
+stops inference on the first qualifying person detection.
 
 Broker credentials are separate from Agent credentials and the Hub access
 token. Keep them out of screenshots and commits. Do not disable TLS
@@ -236,15 +250,16 @@ go run .
 ```
 
 Trigger a recording, or have the facilitator dispatch/re-analyse your test
-recording. The worker waits for a message, builds the marker, prints a limited
-preview without the raw dispatch or storage credentials, **requeues the
-message and exits**. Nothing is posted to Hub and no marker is persisted yet.
+recording. The worker waits for a message, downloads the media into memory,
+builds the marker, prints a limited preview without the raw dispatch or storage
+credentials, **requeues the message and exits**. Nothing is posted to Hub and
+no marker is persisted yet.
 Every received invocation is also logged as structured Logrus context. Secret,
 token, password, credential, private-key and signed-URL fields are redacted;
 credentials and query parameters embedded in URLs are removed.
 The processing handoff logs `media_key`, whether a signed URL is present, and a
 credential-safe `signed_url` with user info, query parameters and fragments
-removed.
+removed. After download, it logs the byte count without logging media content.
 Repeating the command may show the same message. Preview is not a broker peek:
 it changes redelivery state and can count toward a configured delivery limit;
 use the offline fixture for repeated experimentation.
@@ -281,14 +296,18 @@ The body is a credential-free result derived from the invocation:
   "stage": {
     "operation": "forwarder"
   },
-  "result": {
+  "payload": {
     "blocks": [{
       "type": "marker",
       "data": {
-        "name": "custom integration",
-        "description": "Created by the custom workflow integration",
+        "siteId": "site-1",
+        "organisationId": "org-1",
+        "mediaKeys": ["recording.mp4"],
+        "name": "person detected",
+        "description": "YOLO detected a person with 0.91 confidence after analyzing 3 sampled frames",
         "startTimestamp": 1700000000,
-        "endTimestamp": 1700000030
+        "endTimestamp": 1700000030,
+        "duration": 30
       }
     }]
   }
@@ -329,8 +348,8 @@ test servers. Do not use HTTP mode against an endpoint that merely accepts
 and discards results. Without `-once`, successful HTTP mode continues consuming.
 Submission logs include the validated destination as the structured
 `callback_url` field and the exact serialized request body as `result_payload`,
-together with the run ID, operation and response status. The result payload is
-rebuilt locally and contains no invocation credentials.
+together with the run ID, operation and response status. The submitted payload
+is rebuilt locally and contains no invocation credentials.
 
 After a successful callback, verify that the workflow stage resolves and the
 marker appears at the expected time on the recording in Hub. A successful
@@ -339,9 +358,13 @@ preview alone does not demonstrate this.
 ### Remaining Exercise Limitations
 
 - Workflow UI: select device, configure operation/queue, and activate routing.
-- This sample emits a configured synthetic marker rather than analyzing video.
-- Production stages should derive marker timing from media and handle
-  idempotent callback retries.
+- This sample holds at most 100 MiB of downloaded media in memory and briefly
+  stages it in a private temporary file because OpenCV video capture requires a
+  filename.
+- The marker covers the configured recording interval; the example does not
+  yet derive exact entry/exit timing or persist bounding-box tracks.
+- Production stages should tune frame sampling and confidence for their camera
+  placement and handle idempotent callback retries.
 
 These are outside the scope of this starter implementation.
 
@@ -358,8 +381,8 @@ These are outside the scope of this starter implementation.
 - [ ] Marker is visible and retries do not duplicate it.
 
 Submit a short note describing what you ran and which pending steps remain,
-with redacted logs/screenshots. As an extension, replace the synthetic marker
-with real classification trajectory analysis or downloaded-media processing;
-the [production reference service](https://github.com/uug-ai/hub-loitering) and
+with redacted logs/screenshots. As an extension, add person tracking and
+media-derived marker timing; the
+[production reference service](https://github.com/uug-ai/hub-loitering) and
 [marker contract](https://learn.uug.ai/docs/hub/workflows/ingest/blocks/marker/)
 provide the next steps.
