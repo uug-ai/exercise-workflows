@@ -126,6 +126,9 @@ func postResult(ctx context.Context, settings config, invocation handledInvocati
 		log.WithFields(callbackLogFields(invocation, settings.operation, "workflow_result_rejected", body)).
 			WithField("status_code", response.StatusCode).
 			Error("Workflow callback rejected result")
+		if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
+			return fmt.Errorf("callback %s returned HTTP %d; check that WORKFLOW_BEARER_TOKEN is valid and has workflow-run.update scope; message will remain available for replay", invocation.callback.URL, response.StatusCode)
+		}
 		return fmt.Errorf("callback %s returned HTTP %d; message will remain available for replay", invocation.callback.URL, response.StatusCode)
 	}
 	log.WithFields(callbackLogFields(invocation, settings.operation, "workflow_result_submitted", body)).

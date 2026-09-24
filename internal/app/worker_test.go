@@ -51,12 +51,12 @@ func TestDelivery(t *testing.T) {
 			calls := 0
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 				calls++
-				if request.Method != "POST" || request.URL.Path != "/workflows/runs/665f1b2c3d4e5f6071829304" || request.Header.Get("Authorization") != "Bearer test-token" || request.Header.Get("Content-Type") != "application/json" || request.Header.Get("Idempotency-Key") != "665f1b2c3d4e5f6071829304:person-detection" {
+				if request.Method != "POST" || request.URL.Path != "/workflows/runs/665f1b2c3d4e5f6071829304" || request.Header.Get("Authorization") != "Bearer test-token" || request.Header.Get("Content-Type") != "application/json" || request.Header.Get("Idempotency-Key") != "665f1b2c3d4e5f6071829304:forwarder" {
 					t.Error("incorrect callback request")
 				}
 				body, _ := io.ReadAll(request.Body)
 				var result models.WorkflowResult
-				if json.Unmarshal(body, &result) != nil || result.Schema != models.WorkflowResultSchemaV1 || result.Stage.Operation != "person-detection" || result.Result["blocks"] == nil || strings.Contains(string(body), "SECRET") {
+				if json.Unmarshal(body, &result) != nil || result.Schema != models.WorkflowResultSchemaV1 || result.Stage.Operation != "forwarder" || result.Result["blocks"] == nil || strings.Contains(string(body), "SECRET") {
 					t.Error("incorrect callback body")
 				}
 				writer.Header().Set("Location", "/must-not-follow")
@@ -64,7 +64,7 @@ func TestDelivery(t *testing.T) {
 			}))
 			defer server.Close()
 			body := strings.Replace(test.body, "https://api.example.com", server.URL, 1)
-			settings := config{operation: "person-detection", mode: test.mode, token: "test-token", start: 1700000000, duration: 30}
+			settings := config{operation: "forwarder", mode: test.mode, token: "test-token", start: 1700000000, duration: 30}
 			ack := &acknowledgements{}
 			outcome, err := handleDelivery(context.Background(), settings, amqp.Delivery{Body: []byte(body), Acknowledger: ack}, io.Discard)
 			if (err != nil) != test.wantError {
@@ -72,6 +72,9 @@ func TestDelivery(t *testing.T) {
 			}
 			if test.status != 0 && test.wantError && !strings.Contains(err.Error(), server.URL+"/workflows/runs/665f1b2c3d4e5f6071829304") {
 				t.Fatalf("callback error omitted URL: %v", err)
+			}
+			if test.status == http.StatusUnauthorized && !strings.Contains(err.Error(), "workflow-run.update") {
+				t.Fatalf("authorization error omitted required scope: %v", err)
 			}
 			if outcome != test.wantOutcome {
 				t.Fatalf("outcome = %v, want %v", outcome, test.wantOutcome)
@@ -92,9 +95,9 @@ func TestDelivery(t *testing.T) {
 
 func TestCallbackLogFieldsIncludeDestination(t *testing.T) {
 	callback := models.WorkflowCallback{URL: "https://api.example.com/workflows/runs/example-run"}
-	payload := []byte(`{"schema":"uug.ai/workflow-result/v1","stage":{"operation":"person-detection"},"result":{"blocks":[]}}`)
-	fields := callbackLogFields(handledInvocation{runID: "example-run", callback: &callback}, "person-detection", "test_event", payload)
-	if fields["callback_url"] != callback.URL || fields["run_id"] != "example-run" || fields["operation"] != "person-detection" || fields["event"] != "test_event" || fields["result_payload"] != string(payload) {
+	payload := []byte(`{"schema":"uug.ai/workflow-result/v1","stage":{"operation":"forwarder"},"result":{"blocks":[]}}`)
+	fields := callbackLogFields(handledInvocation{runID: "example-run", callback: &callback}, "forwarder", "test_event", payload)
+	if fields["callback_url"] != callback.URL || fields["run_id"] != "example-run" || fields["operation"] != "forwarder" || fields["event"] != "test_event" || fields["result_payload"] != string(payload) {
 		t.Fatalf("unexpected callback log fields: %+v", fields)
 	}
 	var result models.WorkflowResult
@@ -105,7 +108,7 @@ func TestCallbackLogFieldsIncludeDestination(t *testing.T) {
 
 func TestMissingCallbackPrintsAndAcknowledgesResult(t *testing.T) {
 	body := strings.Replace(sampleInvocation, `"callback":{"url":"https://api.example.com/workflows/runs/665f1b2c3d4e5f6071829304","method":"POST","resultSchema":"uug.ai/workflow-result/v1"},`, "", 1)
-	settings := config{operation: "person-detection", mode: "http", token: "test-token", start: 1700000000, duration: 30}
+	settings := config{operation: "forwarder", mode: "http", token: "test-token", start: 1700000000, duration: 30}
 	ack := &acknowledgements{}
 	var output bytes.Buffer
 

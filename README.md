@@ -10,10 +10,9 @@ There are two parts: install an Agent and link it to Hub, then configure a
 workflow and run your own stage. This repository includes a runnable Go stage
 based on the [custom workflow stage tutorial](https://learn.uug.ai/tutorials/hub/custom-workflow-stage/).
 
-Allow about 60-90 minutes. Today, messages are already landing in a test
-RabbitMQ. You can consume a real dispatch and preview a synthetic marker now.
-Workflow configuration through the UI and the bearer-authenticated result API
-are still to be developed; completing the full loop in Hub depends on those.
+Allow about 60-90 minutes. Messages land in a test RabbitMQ, and the
+bearer-authenticated workflow-run API accepts stage results. You can consume a
+real dispatch, generate a synthetic marker and submit it back to Hub.
 
 ## Prerequisites
 
@@ -23,7 +22,7 @@ are still to be developed; completing the full loop in Hub depends on those.
 - VS Code with the Dev Containers extension, or Go 1.25+ installed locally
 - From the facilitator: test RabbitMQ host/port, TLS setting, username,
   password, virtual host, assigned queue name, and stage operation ID
-- Later: a workflow-scoped bearer token for the invocation's callback URL
+- A Hub access token with the `workflow-run.update` scope
 
 You do not need Kubernetes, Helm, MongoDB access, or a container registry for
 this exercise. The facilitator manages the workflow and test broker.
@@ -111,7 +110,7 @@ The intended UI flow is to create a workflow, select your Agent/device as its
 source, add a custom stage, and assign its operation ID and queue. This UI flow
 is not yet available for this exercise. For now, ask the facilitator to provide
 an already routed test queue and its matching operation ID (default sample:
-`person-detection`). Do not invent another queue name: the worker reads exactly the queue you configure.
+`forwarder`). Do not invent another queue name: the worker reads exactly the queue you configure.
 
 The facilitator must provision the queue, routing and a user with read access
 to that queue in the assigned virtual host. The worker does not declare queues,
@@ -204,10 +203,11 @@ commit it or share it in screenshots. The profiles override only
 | `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD` | Your broker credentials |
 | `RABBITMQ_VHOST` | Assigned virtual host, often `/` |
 | `STAGE_QUEUE` | Exact existing queue that receives your dispatches |
-| `STAGE_OPERATION` | Must match the invocation's `stage.operation`, default `person-detection` |
+| `STAGE_OPERATION` | Must match the invocation's `stage.operation`, default `forwarder` |
 | `MARKER_START_TIMESTAMP` | Start of the test recording, in Unix seconds |
 | `MARKER_DURATION_SECONDS` | Interval within that recording, default `30`, maximum `3600` |
 | `RESULT_MODE` | `preview` requeues one message; `bypass` acknowledges without a callback; `http` posts the result |
+| `WORKFLOW_BEARER_TOKEN` | Hub access token with the `workflow-run.update` scope; required for HTTP mode |
 | `LOG_LEVEL` | Logrus level, default `info` |
 | `LOG_OUTPUT` | Logrus output format: `text` (default) or `json` |
 
@@ -217,8 +217,8 @@ identity stays stable. This starter uses one configured interval: test one
 recording at a time; replace `buildCustomMarker` with media-derived timing before
 processing recordings continuously.
 
-Broker credentials are separate from Agent credentials and the future API
-bearer token. Keep them out of screenshots and commits. Do not disable TLS
+Broker credentials are separate from Agent credentials and the Hub access
+token. Keep them out of screenshots and commits. Do not disable TLS
 certificate verification; ask the facilitator for a trusted certificate if
 the broker uses a private CA. A broker on your host is not `localhost` inside
 the dev container; use a hostname reachable from the container.
@@ -262,10 +262,9 @@ invalid message rather than repeatedly restarting against it. Ctrl+C or a
 disconnection leaves unacknowledged deliveries for RabbitMQ to recover. A
 connection failure stops the process; launch it again after fixing connectivity.
 
-### 6. Post results to Hub (API pending)
+### 6. Post results to Hub
 
-This repo includes the client, **not the Hub endpoint or token issuer**.
-The proposed contract is:
+The invocation supplies the run-specific Hub endpoint. The callback contract is:
 
 ```http
 POST /workflows/runs/{runId}
@@ -280,7 +279,7 @@ The body is a credential-free result derived from the invocation:
 {
   "schema": "uug.ai/workflow-result/v1",
   "stage": {
-    "operation": "person-detection"
+    "operation": "forwarder"
   },
   "result": {
     "blocks": [{
@@ -299,12 +298,14 @@ The body is a credential-free result derived from the invocation:
 The invocation itself is not echoed, so credentials and unrelated input fields
 cannot leak into the result.
 
-After the facilitator confirms the endpoint, request body, success semantics
-and token issuance are implemented, select **Stage: HTTP callback (API pending)**
-and press **F5**. The worker follows the shared top-level `callback` object in
-each invocation. It requires `method: "POST"` and
-`resultSchema: "uug.ai/workflow-result/v1"`. Before launching, set
-`WORKFLOW_BEARER_TOKEN` in your ignored `.env` file. This profile sets
+In the Hub UI, generate an access token and grant only the
+`workflow-run.update` scope. Copy it to `WORKFLOW_BEARER_TOKEN` in your ignored
+`.env` file, select **Stage: HTTP callback**, and press **F5**. Never commit or
+share the token; revoke it in Hub when it is no longer needed.
+
+The worker follows the shared top-level `callback` object in each invocation.
+It requires `method: "POST"` and
+`resultSchema: "uug.ai/workflow-result/v1"`. The launch profile sets
 `RESULT_MODE=http`; credentials remain outside the committed launch
 configuration. Pass `-once` explicitly for a one-delivery terminal run.
 
@@ -331,23 +332,18 @@ Submission logs include the validated destination as the structured
 together with the run ID, operation and response status. The result payload is
 rebuilt locally and contains no invocation credentials.
 
-Once available, verify that the workflow stage resolves and the marker appears
-at the expected time on the recording in Hub. A successful preview alone does
-not demonstrate this.
+After a successful callback, verify that the workflow stage resolves and the
+marker appears at the expected time on the recording in Hub. A successful
+preview alone does not demonstrate this.
 
-### Platform Work Still Required
+### Remaining Exercise Limitations
 
 - Workflow UI: select device, configure operation/queue, and activate routing.
-- Result API: implement `POST /workflows/runs/{runId}` and confirm the body contract.
-- Token issuance: scoped bearer tokens with expiry/revocation and permissions
-  limited to the intended organisation, project, workflow and stage.
-- Server authorization: look up the persisted run, validate access and expected
-  operation, and derive ownership from that run rather than trusting the body.
-- Completion: ingest the blocks and resolve the stage durably before success;
-  deduplicate repeated `runId`/operation callbacks. A lost HTTP response can
-  cause replay even when the first request succeeded.
+- This sample emits a configured synthetic marker rather than analyzing video.
+- Production stages should derive marker timing from media and handle
+  idempotent callback retries.
 
-These are follow-up tasks in the Hub repositories, not implemented here.
+These are outside the scope of this starter implementation.
 
 ## Completion Checklist
 
@@ -357,8 +353,9 @@ These are follow-up tasks in the Hub repositories, not implemented here.
 - [ ] Offline sample produces the expected marker interval.
 - [ ] Assigned test queue produces a preview without leaking credentials.
 - [ ] Pending UI: workflow is configured through Hub.
-- [ ] Pending API: bearer-authenticated callback resolves the stage.
-- [ ] Pending end-to-end check: marker is visible and retries do not duplicate it.
+- [ ] Hub access token has only the `workflow-run.update` scope.
+- [ ] Bearer-authenticated callback resolves the stage.
+- [ ] Marker is visible and retries do not duplicate it.
 
 Submit a short note describing what you ran and which pending steps remain,
 with redacted logs/screenshots. As an extension, replace the synthetic marker
