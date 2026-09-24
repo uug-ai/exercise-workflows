@@ -10,7 +10,7 @@ import (
 	"github.com/uug-ai/models/pkg/models"
 )
 
-const operation = "forwarder"
+const operation = "person-detection"
 const invocationSchemaV1 = models.WorkflowInvocationSchemaV1
 const customMarkerName = "custom integration"
 

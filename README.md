@@ -111,7 +111,7 @@ The intended UI flow is to create a workflow, select your Agent/device as its
 source, add a custom stage, and assign its operation ID and queue. This UI flow
 is not yet available for this exercise. For now, ask the facilitator to provide
 an already routed test queue and its matching operation ID (default sample:
-`forwarder`). Do not invent another queue name: the worker reads exactly the queue you configure.
+`person-detection`). Do not invent another queue name: the worker reads exactly the queue you configure.
 
 The facilitator must provision the queue, routing and a user with read access
 to that queue in the assigned virtual host. The worker does not declare queues,
@@ -200,7 +200,7 @@ commit it or share it in screenshots. The profiles override only
 | `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD` | Your broker credentials |
 | `RABBITMQ_VHOST` | Assigned virtual host, often `/` |
 | `STAGE_QUEUE` | Exact existing queue that receives your dispatches |
-| `STAGE_OPERATION` | Must match the invocation's `stage.operation`, default `forwarder` |
+| `STAGE_OPERATION` | Must match the invocation's `stage.operation`, default `person-detection` |
 | `MARKER_START_TIMESTAMP` | Start of the test recording, in Unix seconds |
 | `MARKER_DURATION_SECONDS` | Interval within that recording, default `30`, maximum `3600` |
 | `RESULT_MODE` | `preview` requeues one message; `bypass` acknowledges without a callback; `http` posts the result |
@@ -276,7 +276,7 @@ The body is a credential-free result derived from the invocation:
 {
   "schema": "uug.ai/workflow-result/v1",
   "stage": {
-    "operation": "forwarder"
+    "operation": "person-detection"
   },
   "result": {
     "blocks": [{
