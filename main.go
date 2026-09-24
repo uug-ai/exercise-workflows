@@ -34,7 +34,7 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		result, err := handleInvocation(body, settings.operation, settings.start, settings.duration)
+		result, _, err := handleInvocation(body, settings.operation, settings.start, settings.duration)
 		if err != nil {
 			return err
 		}
@@ -46,10 +46,10 @@ func run() error {
 }
 
 func handleDelivery(ctx context.Context, settings config, delivery amqp.Delivery, output io.Writer) error {
-	result, err := handleInvocation(delivery.Body, settings.operation, settings.start, settings.duration)
+	result, callbackURL, err := handleInvocation(delivery.Body, settings.operation, settings.start, settings.duration)
 	if err == nil {
 		if settings.mode == "http" {
-			err = postResult(ctx, settings, result)
+			err = postResult(ctx, settings, callbackURL, result)
 		} else {
 			err = printPreview(output, result)
 		}

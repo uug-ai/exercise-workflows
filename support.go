@@ -17,8 +17,8 @@ import (
 )
 
 type config struct {
-	operation, mode, callbackURL, token, brokerURL, queue string
-	start, duration                                       int64
+	operation, mode, token, brokerURL, queue string
+	start, duration                          int64
 }
 
 func envOr(name, fallback string) string {
@@ -30,11 +30,10 @@ func envOr(name, fallback string) string {
 
 func loadConfig(offline bool) (config, error) {
 	settings := config{
-		operation:   envOr("STAGE_OPERATION", operation),
-		mode:        envOr("RESULT_MODE", "preview"),
-		callbackURL: os.Getenv("WORKFLOW_RESULT_URL"),
-		token:       os.Getenv("WORKFLOW_BEARER_TOKEN"),
-		queue:       os.Getenv("STAGE_QUEUE"),
+		operation: envOr("STAGE_OPERATION", operation),
+		mode:      envOr("RESULT_MODE", "preview"),
+		token:     os.Getenv("WORKFLOW_BEARER_TOKEN"),
+		queue:     os.Getenv("STAGE_QUEUE"),
 	}
 	settings.start, _ = strconv.ParseInt(os.Getenv("MARKER_START_TIMESTAMP"), 10, 64)
 	settings.duration, _ = strconv.ParseInt(envOr("MARKER_DURATION_SECONDS", "30"), 10, 64)
@@ -50,9 +49,6 @@ func loadConfig(offline bool) (config, error) {
 	if settings.mode == "http" {
 		if strings.TrimSpace(settings.token) == "" || strings.ContainsAny(settings.token, "\r\n") {
 			return settings, errors.New("set a valid WORKFLOW_BEARER_TOKEN")
-		}
-		if err := validateCallback(settings.callbackURL); err != nil {
-			return settings, err
 		}
 	}
 	host := os.Getenv("RABBITMQ_HOST")
@@ -76,13 +72,10 @@ func loadConfig(offline bool) (config, error) {
 	return settings, nil
 }
 
-func validateCallback(template string) error {
-	if strings.Count(template, "{runId}") != 1 || !strings.HasSuffix(template, "/workflows/{runId}") {
-		return errors.New("WORKFLOW_RESULT_URL must contain one {runId} path placeholder")
-	}
-	endpoint, err := url.Parse(strings.ReplaceAll(template, "{runId}", "example-run"))
-	if err != nil || endpoint.Host == "" || endpoint.User != nil || endpoint.RawQuery != "" || endpoint.Fragment != "" || !strings.HasSuffix(endpoint.Path, "/workflows/example-run") {
-		return errors.New("WORKFLOW_RESULT_URL must end with /workflows/{runId}, without credentials, query or fragment")
+func validateCallback(callbackURL, runID string) error {
+	endpoint, err := url.Parse(callbackURL)
+	if err != nil || endpoint.Host == "" || endpoint.User != nil || endpoint.RawQuery != "" || endpoint.Fragment != "" || !strings.HasSuffix(endpoint.Path, "/workflows/"+runID) {
+		return errors.New("callbackUrl must end with /workflows/<runId>, without credentials, query or fragment")
 	}
 	loopback := endpoint.Hostname() == "localhost" || endpoint.Hostname() == "127.0.0.1" || endpoint.Hostname() == "::1"
 	if endpoint.Scheme != "https" && !(endpoint.Scheme == "http" && loopback) {
@@ -91,7 +84,7 @@ func validateCallback(template string) error {
 	return nil
 }
 
-func postResult(ctx context.Context, settings config, result map[string]json.RawMessage) error {
+func postResult(ctx context.Context, settings config, callbackURL string, result map[string]json.RawMessage) error {
 	var runID string
 	if json.Unmarshal(result["runId"], &runID) != nil || !runIDPattern.MatchString(runID) {
 		return errors.New("invalid callback runId")
@@ -100,8 +93,7 @@ func postResult(ctx context.Context, settings config, result map[string]json.Raw
 	if err != nil {
 		return errors.New("cannot encode callback body")
 	}
-	endpoint := strings.ReplaceAll(settings.callbackURL, "{runId}", url.PathEscape(runID))
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, callbackURL, bytes.NewReader(body))
 	if err != nil {
 		return errors.New("cannot create callback request")
 	}

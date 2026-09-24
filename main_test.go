@@ -58,9 +58,10 @@ func TestDelivery(t *testing.T) {
 				writer.WriteHeader(test.status)
 			}))
 			defer server.Close()
-			settings := config{operation: "forwarder", mode: test.mode, callbackURL: server.URL + "/workflows/{runId}", token: "test-token", start: 1700000000, duration: 30}
+			body := strings.Replace(test.body, "https://api.example.com", server.URL, 1)
+			settings := config{operation: "forwarder", mode: test.mode, token: "test-token", start: 1700000000, duration: 30}
 			ack := &acknowledgements{}
-			err := handleDelivery(context.Background(), settings, amqp.Delivery{Body: []byte(test.body), Acknowledger: ack}, io.Discard)
+			err := handleDelivery(context.Background(), settings, amqp.Delivery{Body: []byte(body), Acknowledger: ack}, io.Discard)
 			if (err != nil) != test.wantError {
 				t.Fatalf("error = %v", err)
 			}
@@ -79,13 +80,14 @@ func TestDelivery(t *testing.T) {
 }
 
 func TestCallbackValidation(t *testing.T) {
+	const runID = "example-run"
 	for _, endpoint := range []string{"", "https://example.com/workflows", "http://example.com/workflows/{runId}", "https://user:secret@example.com/workflows/{runId}", "https://example.com/workflows/{runId}?token=secret", "https://{runId}/workflows/example-run"} {
-		if validateCallback(endpoint) == nil {
+		if validateCallback(endpoint, runID) == nil {
 			t.Errorf("accepted %q", endpoint)
 		}
 	}
-	for _, endpoint := range []string{"https://example.com/api/workflows/{runId}", "http://127.0.0.1:8080/workflows/{runId}"} {
-		if err := validateCallback(endpoint); err != nil {
+	for _, endpoint := range []string{"https://example.com/api/workflows/example-run", "http://127.0.0.1:8080/workflows/example-run"} {
+		if err := validateCallback(endpoint, runID); err != nil {
 			t.Errorf("rejected %q: %v", endpoint, err)
 		}
 	}
@@ -115,7 +117,6 @@ func TestBrokerConfiguration(t *testing.T) {
 	}
 
 	t.Setenv("RESULT_MODE", "bypass")
-	t.Setenv("WORKFLOW_RESULT_URL", "")
 	t.Setenv("WORKFLOW_BEARER_TOKEN", "")
 	if _, err := loadConfig(false); err != nil {
 		t.Fatalf("bypass mode required callback configuration: %v", err)

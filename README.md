@@ -23,7 +23,7 @@ are still to be developed; completing the full loop in Hub depends on those.
 - VS Code with the Dev Containers extension, or Go 1.25+ installed locally
 - From the facilitator: test RabbitMQ host/port, TLS setting, username,
   password, virtual host, assigned queue name, and stage operation ID
-- Later: the result API URL and a workflow-scoped bearer token
+- Later: a workflow-scoped bearer token for the invocation's callback URL
 
 You do not need Kubernetes, Helm, MongoDB access, or a container registry for
 this exercise. The facilitator manages the workflow and test broker.
@@ -167,9 +167,10 @@ The code follows the tutorial's main entry point and loitering stage:
 
 The marker and block envelope use the same shared packages as the tutorial.
 The worker accepts only the current `uug.ai/workflow-invocation/v1` contract,
-which identifies the stage through `stage.operation`. Its result is rebuilt
-from the run ID, operation and generated payload so credential-bearing
-invocation fields are not echoed. The RabbitMQ client uses explicit
+which identifies the stage through `stage.operation` and provides a concrete
+top-level `callbackUrl` for that run. Its result is rebuilt from the run ID,
+operation and generated payload so credential-bearing invocation fields are
+not echoed. The RabbitMQ client uses explicit
 acknowledgements for preview/requeue and HTTP completion instead of the
 tutorial's queue-to-queue forwarding. These are intentional exercise
 adaptations.
@@ -232,7 +233,7 @@ Repeating the command may show the same message. Preview is not a broker peek:
 it changes redelivery state and can count toward a configured delivery limit;
 use the offline fixture for repeated experimentation.
 
-To drain valid messages without calling `WORKFLOW_RESULT_URL`, select
+To drain valid messages without calling the invocation's `callbackUrl`, select
 **Stage: queue bypass** or set `RESULT_MODE=bypass`. Bypass prints the same
 credential-free result, acknowledges the message, and continues consuming
 until stopped. This permanently removes successfully processed messages from
@@ -282,14 +283,16 @@ cannot leak into the result.
 
 After the facilitator confirms the endpoint, request body, success semantics
 and token issuance are implemented, select **Stage: HTTP callback (API pending)**
-and press **F5**. Before launching, set `WORKFLOW_RESULT_URL` and
-`WORKFLOW_BEARER_TOKEN` in your ignored `.env` file. This profile sets
-`RESULT_MODE=http` and `-once`; credentials remain outside the committed
-launch configuration.
+and press **F5**. The worker posts to the concrete top-level `callbackUrl` in
+each invocation. Before launching, set `WORKFLOW_BEARER_TOKEN` in your ignored
+`.env` file. This profile sets `RESULT_MODE=http` and `-once`; credentials
+remain outside the committed launch configuration.
 
-Include an API prefix in the URL if required, for example `/api/workflows/{runId}`.
-The intended spelling is `/workflows`, not `/worfklows`. This is a proposed
-workflow-completion API, not the existing standalone `/ingest` API.
+The callback URL may include an API prefix, for example
+`https://api.example.com/api/workflows/665f1b2c3d4e5f6071829304`. It must end in
+`/workflows/<runId>` for the invocation's run ID. The intended spelling is
+`/workflows`, not `/worfklows`. This is a proposed workflow-completion API, not
+the existing standalone `/ingest` API.
 
 HTTP mode acknowledges RabbitMQ only after a `2xx` response. A timeout,
 redirect, `401`, `404`, or other non-success requeues the message and exits
