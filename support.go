@@ -108,7 +108,7 @@ func postResult(ctx context.Context, settings config, invocation handledInvocati
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", "Bearer "+settings.token)
 	request.Header.Set("Idempotency-Key", invocation.runID+":"+settings.operation)
-	log.WithFields(callbackLogFields(invocation, settings.operation, "workflow_result_submitting")).
+	log.WithFields(callbackLogFields(invocation, settings.operation, "workflow_result_submitting", body)).
 		Info("Submitting workflow result")
 	client := &http.Client{
 		Timeout:       30 * time.Second,
@@ -117,29 +117,30 @@ func postResult(ctx context.Context, settings config, invocation handledInvocati
 	response, err := client.Do(request)
 	if err != nil {
 		log.WithError(err).
-			WithFields(callbackLogFields(invocation, settings.operation, "workflow_result_submission_failed")).
+			WithFields(callbackLogFields(invocation, settings.operation, "workflow_result_submission_failed", body)).
 			Error("Workflow callback request failed")
 		return fmt.Errorf("callback request to %s failed; check endpoint availability and TLS", invocation.callback.URL)
 	}
 	defer response.Body.Close()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		log.WithFields(callbackLogFields(invocation, settings.operation, "workflow_result_rejected")).
+		log.WithFields(callbackLogFields(invocation, settings.operation, "workflow_result_rejected", body)).
 			WithField("status_code", response.StatusCode).
 			Error("Workflow callback rejected result")
 		return fmt.Errorf("callback %s returned HTTP %d; message will remain available for replay", invocation.callback.URL, response.StatusCode)
 	}
-	log.WithFields(callbackLogFields(invocation, settings.operation, "workflow_result_submitted")).
+	log.WithFields(callbackLogFields(invocation, settings.operation, "workflow_result_submitted", body)).
 		WithField("status_code", response.StatusCode).
 		Info("Workflow result submitted")
 	return nil
 }
 
-func callbackLogFields(invocation handledInvocation, operation, event string) log.Fields {
+func callbackLogFields(invocation handledInvocation, operation, event string, resultPayload []byte) log.Fields {
 	fields := log.Fields{
-		"component": "workflow_stage",
-		"event":     event,
-		"operation": operation,
-		"run_id":    invocation.runID,
+		"component":      "workflow_stage",
+		"event":          event,
+		"operation":      operation,
+		"result_payload": string(resultPayload),
+		"run_id":         invocation.runID,
 	}
 	if invocation.callback != nil {
 		fields["callback_url"] = invocation.callback.URL

@@ -160,7 +160,7 @@ The code follows the tutorial's main entry point and loitering stage:
 - [main.go](main.go): connect to RabbitMQ, consume an invocation, call
   `handleInvocation`,
   and acknowledge only after delivery of the result.
-- [loiter.go](loiter.go): `measureLoitering` builds a `models.Marker`, then
+- [loiter.go](loiter.go): `buildCustomMarker` builds a `models.Marker`, then
   `handleInvocation` wraps it in the shared `models.WorkflowResult` contract.
 - [support.go](support.go): exercise configuration, preview output and the
   bearer-authenticated HTTP callback, kept separate from the tutorial flow.
@@ -206,7 +206,7 @@ commit it or share it in screenshots. The profiles override only
 Use the actual recording timestamp, not the current time or the fixture's
 timestamp, for live dispatches. Keep the same interval on retries so marker
 identity stays stable. This starter uses one configured interval: test one
-recording at a time; replace `measureLoitering` with media-derived timing before
+recording at a time; replace `buildCustomMarker` with media-derived timing before
 processing recordings continuously.
 
 Broker credentials are separate from Agent credentials and the future API
@@ -275,8 +275,8 @@ The body is a credential-free result derived from the invocation:
     "blocks": [{
       "type": "marker",
       "data": {
-        "name": "forwarder-example",
-        "description": "Synthetic tutorial marker; not a real loitering detection",
+        "name": "custom integration",
+        "description": "Created by the custom workflow integration",
         "startTimestamp": 1700000000,
         "endTimestamp": 1700000030
       }
@@ -316,7 +316,9 @@ nonzero. Redirects are not followed; HTTPS is required except for loopback
 test servers. Do not use HTTP mode against an endpoint that merely accepts
 and discards results. Without `-once`, successful HTTP mode continues consuming.
 Submission logs include the validated destination as the structured
-`callback_url` field, together with the run ID, operation and response status.
+`callback_url` field and the exact serialized request body as `result_payload`,
+together with the run ID, operation and response status. The result payload is
+rebuilt locally and contains no invocation credentials.
 
 Once available, verify that the workflow stage resolves and the marker appears
 at the expected time on the recording in Hub. A successful preview alone does

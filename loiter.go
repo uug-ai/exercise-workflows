@@ -12,6 +12,7 @@ import (
 
 const operation = "forwarder"
 const invocationSchemaV1 = models.WorkflowInvocationSchemaV1
+const customMarkerName = "custom integration"
 
 var runIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 
@@ -21,10 +22,10 @@ type handledInvocation struct {
 	result   models.WorkflowResult
 }
 
-func measureLoitering(stageOperation string, start, duration int64) models.Marker {
+func buildCustomMarker(start, duration int64) models.Marker {
 	return models.Marker{
-		Name:           stageOperation + "-example",
-		Description:    "Synthetic tutorial marker; not a real loitering detection",
+		Name:           customMarkerName,
+		Description:    "Created by the custom workflow integration",
 		StartTimestamp: start,
 		EndTimestamp:   start + duration,
 	}
@@ -54,7 +55,7 @@ func handleInvocation(body []byte, stageOperation string, start, duration int64)
 		return handledInvocation{}, errors.New("provide a valid Unix-seconds marker start and duration of 1..3600 seconds")
 	}
 
-	marker := measureLoitering(stageOperation, start, duration)
+	marker := buildCustomMarker(start, duration)
 	data, err := json.Marshal(marker)
 	if err != nil {
 		return handledInvocation{}, err

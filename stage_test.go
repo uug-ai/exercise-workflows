@@ -42,7 +42,7 @@ func TestHandleInvocation(t *testing.T) {
 	if err := json.Unmarshal(resultData, &envelope); err != nil {
 		t.Fatal(err)
 	}
-	if len(envelope.Blocks) != 1 || envelope.Blocks[0].Type != "marker" || envelope.Blocks[0].Data.StartTimestamp != 1700000000 || envelope.Blocks[0].Data.EndTimestamp != 1700000030 {
+	if len(envelope.Blocks) != 1 || envelope.Blocks[0].Type != "marker" || envelope.Blocks[0].Data.Name != customMarkerName || envelope.Blocks[0].Data.Description != "Created by the custom workflow integration" || envelope.Blocks[0].Data.StartTimestamp != 1700000000 || envelope.Blocks[0].Data.EndTimestamp != 1700000030 {
 		t.Fatalf("unexpected marker: %+v", envelope)
 	}
 	replayed, _ := handleInvocation([]byte(sampleInvocation), "forwarder", 1700000000, 30)

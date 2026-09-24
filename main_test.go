@@ -92,9 +92,14 @@ func TestDelivery(t *testing.T) {
 
 func TestCallbackLogFieldsIncludeDestination(t *testing.T) {
 	callback := models.WorkflowCallback{URL: "https://api.example.com/workflows/runs/example-run"}
-	fields := callbackLogFields(handledInvocation{runID: "example-run", callback: &callback}, "forwarder", "test_event")
-	if fields["callback_url"] != callback.URL || fields["run_id"] != "example-run" || fields["operation"] != "forwarder" || fields["event"] != "test_event" {
+	payload := []byte(`{"schema":"uug.ai/workflow-result/v1","stage":{"operation":"forwarder"},"result":{"blocks":[]}}`)
+	fields := callbackLogFields(handledInvocation{runID: "example-run", callback: &callback}, "forwarder", "test_event", payload)
+	if fields["callback_url"] != callback.URL || fields["run_id"] != "example-run" || fields["operation"] != "forwarder" || fields["event"] != "test_event" || fields["result_payload"] != string(payload) {
 		t.Fatalf("unexpected callback log fields: %+v", fields)
+	}
+	var result models.WorkflowResult
+	if err := json.Unmarshal([]byte(fields["result_payload"].(string)), &result); err != nil || result.Schema != models.WorkflowResultSchemaV1 {
+		t.Fatalf("invalid logged result payload: %v, %+v", err, result)
 	}
 }
 
