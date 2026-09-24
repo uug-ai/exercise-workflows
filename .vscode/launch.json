@@ -45,7 +45,7 @@
       }
     },
     {
-      "name": "Stage: HTTP callback (API pending)",
+      "name": "Stage: HTTP callback",
       "type": "go",
       "request": "launch",
       "mode": "auto",

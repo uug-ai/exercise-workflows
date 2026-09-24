@@ -56,7 +56,7 @@ func TestDelivery(t *testing.T) {
 				}
 				body, _ := io.ReadAll(request.Body)
 				var result models.WorkflowResult
-				if json.Unmarshal(body, &result) != nil || result.Schema != models.WorkflowResultSchemaV1 || result.Stage.Operation != "person-detection" || result.Result["blocks"] == nil || strings.Contains(string(body), "SECRET") {
+				if json.Unmarshal(body, &result) != nil || result.Schema != models.WorkflowResultSchemaV1 || result.Stage.Operation != "person-detection" || len(result.Payload) == 0 || result.Result != nil || strings.Contains(string(body), "SECRET") {
 					t.Error("incorrect callback body")
 				}
 				writer.Header().Set("Location", "/must-not-follow")
@@ -92,7 +92,7 @@ func TestDelivery(t *testing.T) {
 
 func TestCallbackLogFieldsIncludeDestination(t *testing.T) {
 	callback := models.WorkflowCallback{URL: "https://api.example.com/workflows/runs/example-run"}
-	payload := []byte(`{"schema":"uug.ai/workflow-result/v1","stage":{"operation":"person-detection"},"result":{"blocks":[]}}`)
+	payload := []byte(`{"schema":"uug.ai/workflow-result/v1","stage":{"operation":"person-detection"},"payload":{"blocks":[]}}`)
 	fields := callbackLogFields(handledInvocation{runID: "example-run", callback: &callback}, "person-detection", "test_event", payload)
 	if fields["callback_url"] != callback.URL || fields["run_id"] != "example-run" || fields["operation"] != "person-detection" || fields["event"] != "test_event" || fields["result_payload"] != string(payload) {
 		t.Fatalf("unexpected callback log fields: %+v", fields)

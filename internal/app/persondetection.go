@@ -64,16 +64,20 @@ func handleInvocation(body []byte, stageOperation string, start, duration int64)
 	if err != nil {
 		return handledInvocation{}, err
 	}
+	payload, err := json.Marshal(ingest.BlockEnvelope{
+		Blocks: []ingest.Block{{Type: ingest.KindMarker, Data: data}},
+	})
+	if err != nil {
+		return handledInvocation{}, err
+	}
 
 	return handledInvocation{
 		runID:    runID,
 		callback: callback,
 		result: models.WorkflowResult{
-			Schema: models.WorkflowResultSchemaV1,
-			Stage:  models.WorkflowStageReference{Operation: dispatchOperation},
-			Result: map[string]any{
-				"blocks": []ingest.Block{{Type: ingest.KindMarker, Data: data}},
-			},
+			Schema:  models.WorkflowResultSchemaV1,
+			Stage:   models.WorkflowStageReference{Operation: dispatchOperation},
+			Payload: payload,
 		},
 	}, nil
 }

@@ -35,11 +35,10 @@ func TestHandleInvocation(t *testing.T) {
 			Data models.Marker `json:"data"`
 		} `json:"blocks"`
 	}
-	resultData, err := json.Marshal(invocation.result.Result)
-	if err != nil {
-		t.Fatal(err)
+	if invocation.result.Result != nil {
+		t.Fatalf("marker callback unexpectedly contains routing result: %+v", invocation.result.Result)
 	}
-	if err := json.Unmarshal(resultData, &envelope); err != nil {
+	if err := json.Unmarshal(invocation.result.Payload, &envelope); err != nil {
 		t.Fatal(err)
 	}
 	if len(envelope.Blocks) != 1 || envelope.Blocks[0].Type != "marker" || envelope.Blocks[0].Data.Name != customMarkerName || envelope.Blocks[0].Data.Description != "Created by the custom workflow integration" || envelope.Blocks[0].Data.StartTimestamp != 1700000000 || envelope.Blocks[0].Data.EndTimestamp != 1700000030 {

@@ -10,10 +10,9 @@ There are two parts: install an Agent and link it to Hub, then configure a
 workflow and run your own stage. This repository includes a runnable Go stage
 based on the [custom workflow stage tutorial](https://learn.uug.ai/tutorials/hub/custom-workflow-stage/).
 
-Allow about 60-90 minutes. Today, messages are already landing in a test
-RabbitMQ. You can consume a real dispatch and preview a synthetic marker now.
-Workflow configuration through the UI and the bearer-authenticated result API
-are still to be developed; completing the full loop in Hub depends on those.
+Allow about 60-90 minutes. Messages are already landing in a test RabbitMQ. You
+can consume a real dispatch, preview a synthetic marker, and return it through
+the bearer-authenticated workflow callback API.
 
 ## Prerequisites
 
@@ -96,14 +95,14 @@ Agent recording -> Hub workflow -> assigned test RabbitMQ queue
                                          |
                                     Go stage
                                          |
-                        preview now / HTTP callback later
+                         preview / HTTP callback
                                          |
-                      POST /workflows/runs/{runId} (pending)
+                        POST /workflows/runs/{runId}
 ```
 
 Unlike the tutorial, this exercise does not publish results to
-`WORKFLOWS_QUEUE`. It uses a local preview until the result API is available,
-then posts the completed run over HTTP.
+`WORKFLOWS_QUEUE`. It can preview locally or post the completed stage output
+over HTTP.
 
 ### 1. Configure the workflow (UI pending)
 
@@ -262,10 +261,9 @@ invalid message rather than repeatedly restarting against it. Ctrl+C or a
 disconnection leaves unacknowledged deliveries for RabbitMQ to recover. A
 connection failure stops the process; launch it again after fixing connectivity.
 
-### 6. Post results to Hub (API pending)
+### 6. Post results to Hub
 
-This repo includes the client, **not the Hub endpoint or token issuer**.
-The proposed contract is:
+The worker submits its output to the callback URL provided by Hub:
 
 ```http
 POST /workflows/runs/{runId}
@@ -282,7 +280,7 @@ The body is a credential-free result derived from the invocation:
   "stage": {
     "operation": "person-detection"
   },
-  "result": {
+  "payload": {
     "blocks": [{
       "type": "marker",
       "data": {
@@ -299,12 +297,11 @@ The body is a credential-free result derived from the invocation:
 The invocation itself is not echoed, so credentials and unrelated input fields
 cannot leak into the result.
 
-After the facilitator confirms the endpoint, request body, success semantics
-and token issuance are implemented, select **Stage: HTTP callback (API pending)**
-and press **F5**. The worker follows the shared top-level `callback` object in
-each invocation. It requires `method: "POST"` and
-`resultSchema: "uug.ai/workflow-result/v1"`. Before launching, set
-`WORKFLOW_BEARER_TOKEN` in your ignored `.env` file. This profile sets
+Create a project-bound Hub access token with the `workflow-runs.update` scope,
+then set `WORKFLOW_BEARER_TOKEN` in your ignored `.env` file. Select
+**Stage: HTTP callback** and press **F5**. The worker follows the shared
+top-level `callback` object in each invocation. It requires `method: "POST"` and
+`resultSchema: "uug.ai/workflow-result/v1"`. This profile sets
 `RESULT_MODE=http`; credentials remain outside the committed launch
 configuration. Pass `-once` explicitly for a one-delivery terminal run.
 
@@ -331,23 +328,10 @@ Submission logs include the validated destination as the structured
 together with the run ID, operation and response status. The result payload is
 rebuilt locally and contains no invocation credentials.
 
-Once available, verify that the workflow stage resolves and the marker appears
-at the expected time on the recording in Hub. A successful preview alone does
-not demonstrate this.
-
-### Platform Work Still Required
-
-- Workflow UI: select device, configure operation/queue, and activate routing.
-- Result API: implement `POST /workflows/runs/{runId}` and confirm the body contract.
-- Token issuance: scoped bearer tokens with expiry/revocation and permissions
-  limited to the intended organisation, project, workflow and stage.
-- Server authorization: look up the persisted run, validate access and expected
-  operation, and derive ownership from that run rather than trusting the body.
-- Completion: ingest the blocks and resolve the stage durably before success;
-  deduplicate repeated `runId`/operation callbacks. A lost HTTP response can
-  cause replay even when the first request succeeded.
-
-These are follow-up tasks in the Hub repositories, not implemented here.
+Verify that the workflow stage resolves and the marker appears at the expected
+time on the recording in Hub. `202 Accepted` means Hub queued the output for
+workflow processing; marker persistence happens asynchronously. A successful
+preview alone does not demonstrate this.
 
 ## Completion Checklist
 
