@@ -98,32 +98,49 @@ func handleInvocation(ctx context.Context, body []byte, stageOperation string, s
 		"person_detected": detection.Detected,
 	}).Info("YOLO person detection completed")
 
-	blocks := make([]ingest.Block, 0, 1)
+	result := models.WorkflowResult{
+		Schema: models.WorkflowResultSchemaV1,
+		Stage:  models.WorkflowStageReference{Operation: dispatchOperation},
+	}
 	if detection.Detected {
 		marker := buildPersonMarker(invocation, detection, start, duration)
-		data, err := json.Marshal(marker)
+		markerData, err := json.Marshal(marker)
 		if err != nil {
 			return handledInvocation{}, err
 		}
-		blocks = append(blocks, ingest.Block{Type: ingest.KindMarker, Data: data})
-	}
-	payload, err := json.Marshal(struct {
-		Blocks []ingest.Block `json:"blocks"`
-	}{
-		Blocks: blocks,
-	})
-	if err != nil {
-		return handledInvocation{}, err
+		mediaPatchData, err := json.Marshal(struct {
+			MediaKey    string `json:"mediaKey"`
+			Description string `json:"description"`
+		}{
+			MediaKey:    invocation.Media.Key,
+			Description: marker.Description,
+		})
+		if err != nil {
+			return handledInvocation{}, err
+		}
+		payload, err := json.Marshal(struct {
+			Blocks []ingest.Block `json:"blocks"`
+		}{
+			Blocks: []ingest.Block{
+				{Type: ingest.KindMarker, Data: markerData},
+				{Type: ingest.KindMediaPatch, Data: mediaPatchData},
+			},
+		})
+		if err != nil {
+			return handledInvocation{}, err
+		}
+		result.Payload = payload
+	} else {
+		result.Result = map[string]any{
+			"personDetected": false,
+			"framesAnalyzed": detection.FramesAnalyzed,
+		}
 	}
 
 	return handledInvocation{
 		runID:    runID,
 		callback: callback,
-		result: models.WorkflowResult{
-			Schema:  models.WorkflowResultSchemaV1,
-			Stage:   models.WorkflowStageReference{Operation: dispatchOperation},
-			Payload: payload,
-		},
+		result:   result,
 	}, nil
 }
 
@@ -173,6 +190,9 @@ func dispatchMetadata(invocation models.WorkflowInvocation) (runID, dispatchOper
 	}
 	if invocation.Stage.Operation == "" {
 		return "", "", nil, errors.New("missing or invalid stage.operation")
+	}
+	if invocation.Media.Key == "" {
+		return "", "", nil, errors.New("missing or invalid media.key")
 	}
 	return invocation.RunID, invocation.Stage.Operation, invocation.Callback, nil
 }

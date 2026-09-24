@@ -163,8 +163,10 @@ This stage downloads the signed media URL into a bounded in-memory byte slice,
 samples video frames with GoCV and runs the official YOLO11n ONNX model through
 the Go ONNX Runtime binding. It emits one `person detected` marker covering the
 configured recording interval when any sampled frame meets the confidence
-threshold. If no person is detected, the payload contains an empty `blocks`
-array.
+threshold and a `media-patch` block that writes the same detection summary to
+the recording description. If no person is detected, the stage returns a
+routing `result` summary instead of an ingest `payload`, because Hub requires
+every ingest payload to contain at least one block.
 The code follows the tutorial's main entry point and person-detection stage:
 
 - [main.go](main.go): minimal executable entry point that runs the internal app.
@@ -297,19 +299,28 @@ The body is a credential-free result derived from the invocation:
     "operation": "forwarder"
   },
   "payload": {
-    "blocks": [{
-      "type": "marker",
-      "data": {
-        "siteId": "site-1",
-        "organisationId": "org-1",
-        "mediaKeys": ["recording.mp4"],
-        "name": "person detected",
-        "description": "YOLO detected a person with 0.91 confidence after analyzing 3 sampled frames",
-        "startTimestamp": 1700000000,
-        "endTimestamp": 1700000030,
-        "duration": 30
+    "blocks": [
+      {
+        "type": "marker",
+        "data": {
+          "siteId": "site-1",
+          "organisationId": "org-1",
+          "mediaKeys": ["recording.mp4"],
+          "name": "person detected",
+          "description": "YOLO detected a person with 0.91 confidence after analyzing 3 sampled frames",
+          "startTimestamp": 1700000000,
+          "endTimestamp": 1700000030,
+          "duration": 30
+        }
+      },
+      {
+        "type": "media-patch",
+        "data": {
+          "mediaKey": "recording.mp4",
+          "description": "YOLO detected a person with 0.91 confidence after analyzing 3 sampled frames"
+        }
       }
-    }]
+    ]
   }
 }
 ```

@@ -73,18 +73,18 @@ func TestHandleInvocation(t *testing.T) {
 		t.Fatalf("credentials leaked: %s", encoded)
 	}
 	var envelope struct {
-		Blocks []struct {
-			Type string        `json:"type"`
-			Data models.Marker `json:"data"`
-		} `json:"blocks"`
+		Blocks []ingest.Block `json:"blocks"`
 	}
 	if err := json.Unmarshal(invocation.result.Payload, &envelope); err != nil {
 		t.Fatal(err)
 	}
-	if len(envelope.Blocks) != 1 {
+	if len(envelope.Blocks) != 2 {
 		t.Fatalf("unexpected marker blocks: %+v", envelope)
 	}
-	marker := envelope.Blocks[0].Data
+	var marker models.Marker
+	if err := json.Unmarshal(envelope.Blocks[0].Data, &marker); err != nil {
+		t.Fatal(err)
+	}
 	if envelope.Blocks[0].Type != "marker" ||
 		marker.Name != personMarkerName ||
 		!strings.Contains(marker.Description, "0.91 confidence") ||
@@ -95,6 +95,18 @@ func TestHandleInvocation(t *testing.T) {
 		marker.SiteId != "site-1" ||
 		!reflect.DeepEqual(marker.MediaKeys, []string{"recording.mp4"}) {
 		t.Fatalf("unexpected marker: %+v", envelope)
+	}
+	var mediaPatch struct {
+		MediaKey    string `json:"mediaKey"`
+		Description string `json:"description"`
+	}
+	if err := json.Unmarshal(envelope.Blocks[1].Data, &mediaPatch); err != nil {
+		t.Fatal(err)
+	}
+	if envelope.Blocks[1].Type != ingest.KindMediaPatch ||
+		mediaPatch.MediaKey != "recording.mp4" ||
+		mediaPatch.Description != marker.Description {
+		t.Fatalf("unexpected media patch: %+v", envelope.Blocks[1])
 	}
 	replayed, _ := handleInvocation(context.Background(), []byte(body), "forwarder", 1700000000, 30, detectedPerson())
 	if !reflect.DeepEqual(invocation, replayed) {
@@ -116,6 +128,7 @@ func TestHandleInvocationRejectsInvalidInput(t *testing.T) {
 		strings.Replace(sampleInvocation, `"method":"POST"`, `"method":"GET"`, 1),
 		strings.Replace(sampleInvocation, `"resultSchema":"uug.ai/workflow-result/v1"`, `"resultSchema":"uug.ai/workflow-result/v2"`, 1),
 		strings.Replace(sampleInvocation, `"signedUrl":"https://example.com?secret=SECRET"`, `"signedUrl":""`, 1),
+		strings.Replace(sampleInvocation, `"key":"recording.mp4"`, `"key":""`, 1),
 	} {
 		if _, err := handleInvocation(context.Background(), []byte(body), "forwarder", 1700000000, 30, detectedPerson()); err == nil {
 			t.Errorf("accepted invalid invocation: %s", body)
@@ -194,7 +207,7 @@ func TestHandleInvocationAllowsMissingCallback(t *testing.T) {
 	}
 }
 
-func TestHandleInvocationOmitsMarkerWithoutPerson(t *testing.T) {
+func TestHandleInvocationReturnsRoutingResultWithoutPerson(t *testing.T) {
 	server := newMediaServer(t, []byte("video"))
 	body := strings.Replace(sampleInvocation, "https://example.com?secret=SECRET", server.URL, 1)
 	detector := &stubPersonDetector{detection: personDetection{FramesAnalyzed: 5}}
@@ -202,13 +215,17 @@ func TestHandleInvocationOmitsMarkerWithoutPerson(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var envelope struct {
-		Blocks []ingest.Block `json:"blocks"`
+	if invocation.result.Payload != nil {
+		t.Fatalf("unexpected ingest payload without a person detection: %s", invocation.result.Payload)
 	}
-	if err := json.Unmarshal(invocation.result.Payload, &envelope); err != nil {
+	if invocation.result.Result["personDetected"] != false || invocation.result.Result["framesAnalyzed"] != 5 {
+		t.Fatalf("unexpected no-detection result: %+v", invocation.result.Result)
+	}
+	encoded, err := json.Marshal(invocation.result)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if len(envelope.Blocks) != 0 {
-		t.Fatalf("unexpected marker without a person detection: %+v", envelope.Blocks)
+	if strings.Contains(string(encoded), `"payload"`) || !strings.Contains(string(encoded), `"result":{"framesAnalyzed":5,"personDetected":false}`) {
+		t.Fatalf("unexpected no-detection JSON: %s", encoded)
 	}
 }

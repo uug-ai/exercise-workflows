@@ -99,6 +99,44 @@ func TestDelivery(t *testing.T) {
 	}
 }
 
+func TestDeliveryWithoutPersonPostsRoutingResult(t *testing.T) {
+	callbacks := 0
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			_, _ = writer.Write([]byte("video"))
+			return
+		}
+		callbacks++
+		var result models.WorkflowResult
+		if err := json.NewDecoder(request.Body).Decode(&result); err != nil {
+			t.Fatal(err)
+		}
+		if result.Payload != nil || result.Result["personDetected"] != false || result.Result["framesAnalyzed"] != float64(30) {
+			t.Errorf("unexpected no-detection callback: %+v", result)
+		}
+		writer.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	body := strings.Replace(sampleInvocation, "https://api.example.com", server.URL, 1)
+	body = strings.Replace(body, "https://example.com?secret=SECRET", server.URL+"/recording.mp4?secret=SECRET", 1)
+	settings := config{
+		operation: "forwarder",
+		mode:      "http",
+		token:     "test-token",
+		start:     1700000000,
+		duration:  30,
+		detector:  &stubPersonDetector{detection: personDetection{FramesAnalyzed: 30}},
+	}
+	ack := &acknowledgements{}
+	outcome, err := handleDelivery(context.Background(), settings, amqp.Delivery{Body: []byte(body), Acknowledger: ack}, io.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if outcome != deliverySubmitted || callbacks != 1 || ack.acks != 1 || ack.nacks != 0 {
+		t.Fatalf("outcome = %v, callbacks = %d, acknowledgements = %+v", outcome, callbacks, ack)
+	}
+}
+
 func TestCallbackLogFieldsIncludeDestination(t *testing.T) {
 	callback := models.WorkflowCallback{URL: "https://api.example.com/workflows/runs/example-run"}
 	payload := []byte(`{"schema":"uug.ai/workflow-result/v1","stage":{"operation":"forwarder"},"payload":{"blocks":[]}}`)
