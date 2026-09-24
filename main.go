@@ -5,18 +5,22 @@ import (
 	"errors"
 	"flag"
 	"io"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
+	configureLogging(envOr("LOG_LEVEL", "info"), envOr("LOG_OUTPUT", "text"))
 	if err := run(); err != nil {
-		log.Print(err)
+		log.WithError(err).WithFields(log.Fields{
+			"component": "workflow_stage",
+			"event":     "stage_stopped",
+		}).Error("Workflow stage stopped")
 		os.Exit(1)
 	}
 }
@@ -81,7 +85,11 @@ func consume(ctx context.Context, settings config, once bool) error {
 	if err != nil {
 		return errors.New("cannot consume STAGE_QUEUE; confirm it exists in this vhost and the account has read permission")
 	}
-	log.Printf("waiting for a workflow invocation (mode=%s); Ctrl+C to stop", settings.mode)
+	log.WithFields(log.Fields{
+		"component": "workflow_stage",
+		"event":     "workflow_invocation_waiting",
+		"mode":      settings.mode,
+	}).Info("Waiting for a workflow invocation; Ctrl+C to stop")
 	for {
 		select {
 		case <-ctx.Done():
@@ -90,17 +98,27 @@ func consume(ctx context.Context, settings config, once bool) error {
 			if !open {
 				return errors.New("RabbitMQ delivery stream closed; restart the worker to reconnect")
 			}
+			logInvocation(log.StandardLogger(), delivery)
 			if err := handleDelivery(ctx, settings, delivery, os.Stdout); err != nil {
 				return err
 			}
 			if settings.mode == "preview" {
-				log.Print("preview only: message requeued, no result submitted to Hub")
+				log.WithFields(log.Fields{
+					"component": "workflow_stage",
+					"event":     "workflow_invocation_previewed",
+				}).Info("Preview only: message requeued, no result submitted to Hub")
 				return nil
 			}
 			if settings.mode == "bypass" {
-				log.Print("bypass: message processed and acknowledged, no result submitted to Hub")
+				log.WithFields(log.Fields{
+					"component": "workflow_stage",
+					"event":     "workflow_invocation_bypassed",
+				}).Info("Bypass: message processed and acknowledged, no result submitted to Hub")
 			} else {
-				log.Print("result accepted by callback; delivery acknowledged")
+				log.WithFields(log.Fields{
+					"component": "workflow_stage",
+					"event":     "workflow_result_accepted",
+				}).Info("Result accepted by callback; delivery acknowledged")
 			}
 			if once {
 				return nil

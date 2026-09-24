@@ -86,7 +86,7 @@ func dispatchMetadata(invocation map[string]json.RawMessage) (runID, dispatchOpe
 		return "", "", "", errors.New("missing or invalid stage.operation")
 	}
 	if json.Unmarshal(invocation["callbackUrl"], &callbackURL) != nil || callbackURL == "" {
-		return "", "", "", errors.New("missing or invalid callbackUrl")
+		return "", "", "", errors.New("missing or invalid callbackUrl; this delivery may predate callback URL support, so dispatch a fresh run or ask the facilitator to quarantine it")
 	}
 	return runID, stage.Operation, callbackURL, nil
 }

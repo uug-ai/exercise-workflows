@@ -68,6 +68,7 @@ func TestHandleInvocationRejectsInvalidInput(t *testing.T) {
 			t.Errorf("accepted invalid invocation: %s", body)
 		}
 	}
+
 	for _, interval := range [][2]int64{{0, 30}, {1700000000000, 30}, {1700000000, 0}, {1700000000, 3601}} {
 		if _, _, err := handleInvocation([]byte(sampleInvocation), "forwarder", interval[0], interval[1]); err == nil {
 			t.Errorf("accepted invalid interval: %v", interval)
@@ -76,5 +77,13 @@ func TestHandleInvocationRejectsInvalidInput(t *testing.T) {
 	mismatch := strings.Replace(sampleInvocation, `"operation":"forwarder"`, `"operation":"loitering"`, 1)
 	if _, _, err := handleInvocation([]byte(mismatch), "forwarder", 1700000000, 30); err == nil || !strings.Contains(err.Error(), `"loitering"`) {
 		t.Fatalf("operation mismatch was not explained: %v", err)
+	}
+}
+
+func TestHandleInvocationExplainsMissingCallbackURL(t *testing.T) {
+	body := strings.Replace(sampleInvocation, `"callbackUrl":"https://api.example.com/workflows/665f1b2c3d4e5f6071829304",`, "", 1)
+	_, _, err := handleInvocation([]byte(body), "forwarder", 1700000000, 30)
+	if err == nil || !strings.Contains(err.Error(), "dispatch a fresh run") {
+		t.Fatalf("missing callbackUrl was not explained: %v", err)
 	}
 }

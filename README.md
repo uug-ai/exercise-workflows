@@ -200,6 +200,8 @@ commit it or share it in screenshots. The profiles override only
 | `MARKER_START_TIMESTAMP` | Start of the test recording, in Unix seconds |
 | `MARKER_DURATION_SECONDS` | Interval within that recording, default `30`, maximum `3600` |
 | `RESULT_MODE` | `preview` requeues one message; `bypass` acknowledges without a callback; `http` posts the result |
+| `LOG_LEVEL` | Logrus level, default `info` |
+| `LOG_OUTPUT` | Logrus output format: `text` (default) or `json` |
 
 Use the actual recording timestamp, not the current time or the fixture's
 timestamp, for live dispatches. Keep the same interval on retries so marker
@@ -229,6 +231,9 @@ Trigger a recording, or have the facilitator dispatch/re-analyse your test
 recording. The worker waits for a message, builds the marker, prints a limited
 preview without the raw dispatch or storage credentials, **requeues the
 message and exits**. Nothing is posted to Hub and no marker is persisted yet.
+Every received invocation is also logged as structured Logrus context. Secret,
+token, password, credential, private-key and signed-URL fields are redacted;
+credentials and query parameters embedded in URLs are removed.
 Repeating the command may show the same message. Preview is not a broker peek:
 it changes redelivery state and can count toward a configured delivery limit;
 use the offline fixture for repeated experimentation.
