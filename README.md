@@ -64,7 +64,7 @@ The processing path works end to end:
 - GoCV decodes and samples the video.
 - YOLO11n runs through the Go ONNX Runtime binding.
 - A detected person produces:
-  - a timeline `marker`; and
+  - a timeline `marker`
   - a `media-patch` that updates the recording description.
 - A recording without a person returns a routing result and does not modify the
   recording.
@@ -122,9 +122,9 @@ your machine.
 
 Verify that:
 
-1. the camera preview works;
-2. the Agent appears online in Hub; and
-3. a recording made by the Agent is playable in Hub.
+1. the camera preview works
+2. the Agent appears online in Hub
+3. a recording made by the Agent is playable in Hub
 
 See the
 [Agent installation tutorial](https://doc.kerberos.io/tutorials/agent/install/)
@@ -139,15 +139,14 @@ custom stage, and connect its outputs. That editor is not yet available.
 
 For now, ask the facilitator to provide:
 
-- a RabbitMQ host, port, scheme, username, password, and virtual host;
-- an existing queue that receives workflow invocations;
-- the stage operation assigned to that queue; and
-- a workflow configured to dispatch recordings from your Agent.
+- a RabbitMQ host, port, scheme, username, password, and virtual host
+- an existing queue that receives workflow invocations
+- the stage operation assigned to that queue
+- a workflow configured to dispatch recordings from your Agent
 
 The worker deliberately does not create queues, exchanges, or bindings. It
 requires read access to the assigned queue but no broker management or publish
-permissions. Use a dedicated queue per participant: multiple consumers on one
-queue compete for deliveries.
+permissions.
 
 ## 3. Open the development environment
 
@@ -158,10 +157,10 @@ Open this repository as the VS Code folder and run:
 Use **Rebuild**, not only **Reopen**, after pulling changes to the
 [dev-container Dockerfile](.devcontainer/Dockerfile). The build installs:
 
-- OpenCV 4.6 for video decoding;
-- ONNX Runtime 1.29;
-- the official YOLO11n ONNX model; and
-- Go module dependencies.
+- OpenCV 4.6 for video decoding
+- ONNX Runtime 1.29
+- the official YOLO11n ONNX model
+- Go module dependencies
 
 The model and runtime downloads are pinned by SHA-256 checksums.
 
@@ -240,11 +239,11 @@ go run .
 
 Preview mode:
 
-1. receives one invocation;
-2. downloads and analyzes the recording;
-3. prints the generated result;
-4. requeues the RabbitMQ delivery; and
-5. exits without calling Hub.
+1. receives one invocation
+2. downloads and analyzes the recording
+3. prints the generated result
+4. requeues the RabbitMQ delivery
+5. exits without calling Hub
 
 Preview is not a broker peek. It changes redelivery state and may count toward
 a configured delivery limit.
@@ -282,15 +281,15 @@ go run . -once
 For each valid invocation, the worker:
 
 1. validates the schema, run ID, stage operation, callback, media key, and
-   marker interval;
+   marker interval
 2. downloads `media.signedUrl` into memory with a two-minute timeout and a
-   100 MiB limit;
+   100 MiB limit
 3. stages the bytes in a private temporary file because OpenCV video capture
-   requires a filename;
-4. samples frames at `YOLO_SAMPLE_FPS`;
+   requires a filename
+4. samples frames at `YOLO_SAMPLE_FPS`
 5. runs YOLO11n until the first person confidence reaches
-   `YOLO_CONFIDENCE`; and
-6. submits one of the two result forms below.
+   `YOLO_CONFIDENCE`
+6. submits one of the two result forms below
 
 The temporary file is removed after processing. Signed URL credentials and
 query parameters are redacted from logs.
@@ -359,35 +358,35 @@ recording description.
 
 ## Delivery and retry semantics
 
-- RabbitMQ uses explicit acknowledgements with a prefetch of one.
-- Preview always requeues its delivery.
-- HTTP mode acknowledges only after a `2xx` callback response.
+- RabbitMQ uses explicit acknowledgements with a prefetch of one
+- Preview always requeues its delivery
+- HTTP mode acknowledges only after a `2xx` callback response
 - Timeouts, redirects, authorization errors, and other non-`2xx` responses
-  requeue the delivery and stop the worker.
+  requeue the delivery and stop the worker
 - Malformed invocations and processing failures also requeue and stop, avoiding
-  an immediate retry loop.
+  an immediate retry loop
 - Ctrl+C and broker disconnections leave unacknowledged deliveries for
-  RabbitMQ recovery.
-- Callback redirects are not followed.
+  RabbitMQ recovery
+- Callback redirects are not followed
 - Callback HTTP is allowed only for loopback testing; other endpoints require
-  HTTPS.
+  HTTPS
 
 If an invocation omits `callback.url`, HTTP mode prints the result and
 acknowledges the delivery, but the workflow stage remains unresolved.
 
 ## Security
 
-- Keep Agent, RabbitMQ, storage, and Hub credentials out of Git.
-- Use a Hub token scoped only to `workflow-run.update`.
-- Use TLS for RabbitMQ and callbacks outside an approved local test network.
-- Do not disable certificate validation.
-- Signed URLs, embedded URL credentials, tokens, passwords, storage fields,
-  and private keys are redacted from structured invocation logs.
+- Keep Agent, RabbitMQ, storage, and Hub credentials out of Git
+- Use a Hub token scoped only to `workflow-run.update`
+- Use TLS for RabbitMQ and callbacks outside an approved local test network
+- Do not disable certificate validation
+- Signed URLs, embedded URL credentials, tokens, passwords, storage fields
+  and private keys are redacted from structured invocation logs
 - Callback bodies are rebuilt from validated fields instead of echoing the
-  invocation.
-- Media downloads are bounded to 100 MiB.
+  invocation
+- Media downloads are bounded to 100 MiB
 - The model and ONNX Runtime archives are checksum verified during the
-  dev-container build.
+  dev-container build
 
 ## Project layout
 
@@ -413,14 +412,14 @@ go vet ./...
 
 The test suite covers:
 
-- invocation and callback validation;
-- signed-media download behavior and limits;
-- YOLO tensor preprocessing and person-score extraction;
-- marker and media-patch payloads;
-- no-person routing results;
-- callback success and failure handling;
-- RabbitMQ acknowledgement and requeue behavior; and
-- credential redaction.
+- invocation and callback validation
+- signed-media download behavior and limits
+- YOLO tensor preprocessing and person-score extraction
+- marker and media-patch payloads
+- no-person routing results
+- callback success and failure handling
+- RabbitMQ acknowledgement and requeue behavior
+- credential redaction
 
 An opt-in integration test exercises real video decoding and YOLO inference:
 
@@ -438,11 +437,11 @@ operations and queues, and activating routing without facilitator assistance.
 
 Further stage improvements could include:
 
-- person tracking across frames;
-- exact entry and exit timestamps;
-- persisted bounding-box tracks;
-- configurable marker descriptions; and
-- production tuning for camera placement, confidence, and sampling rate.
+- person tracking across frames
+- exact entry and exit timestamps
+- persisted bounding-box tracks
+- configurable marker descriptions
+- production tuning for camera placement, confidence, and sampling rate
 
 Useful references:
 
