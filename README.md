@@ -88,8 +88,9 @@ URL are deployment prerequisites, not something the exercise worker provisions.
 - An Agent public access key and private key
 - An H.264 or H.265 RTSP camera stream
 - A Hub deployment with the workflow designer and `forwarder` block enabled
-- An existing RabbitMQ destination queue reachable by both the Hub forwarder
-  and your development container, with credentials for each
+- A RabbitMQ destination reachable by both the Hub forwarder and your
+  development container, with credentials for each and permission to use the
+  destination queues described in Step 2
 - A publicly reachable HTTPS Hub API configured as the forwarder's callback base URL
 - A Hub token with the `workflow-runs.update` scope (created in Step 3)
 
@@ -147,52 +148,73 @@ for additional setup options.
 1. Select the organisation/project containing your Agent and open **Workflows**.
 2. Select **Add Workflow**, give it a name such as `Person detection exercise`,
    and add a short description. Leave it **Disabled** while configuring it.
-3. The new canvas already contains a start block. Select it and keep its start
-   mode **Automatic** so new recordings can start the workflow.
-4. Drag the forwarder block from **Blocks** onto the canvas to the right of
-   the start block. Its display name is deployment-configurable; the operation
-   must be `forwarder`.
+3. The new canvas already contains the **Recording classified** start block.
+   Keep its start mode **Automatic** so classified recordings can start the
+   workflow.
+4. Drag **Forward to my system** from **Blocks** onto the canvas to the right
+   of the start block. Its display name is deployment-configurable; the
+   operation must be `forwarder`.
 5. Drag from the start block's right-hand output port to the forwarder block's
    left-hand input port. The connection determines execution order; placing
    blocks next to each other does not connect them.
-6. Select the **connection line**, not the forwarder block, to configure the
-   automatic trigger. Under **Devices**, select only your exercise Agent.
-   Leave sites, groups, classifications, and additional conditions unset, and
-   use **Always** for the schedule.
+6. Select the connection's **Start when...** trigger badge, not the forwarder
+   block, to configure the automatic trigger. Expand **Which recordings** and
+   use **Camera** to select only your exercise Agent. Leave **Site**,
+   **Camera group**, and **Objects in recording** unset. Keep optional
+   **Activity**, **Camera details**, and **Extra conditions** filters unset,
+   and use **Active hours → Always** for the schedule.
 
 Device selection and scheduling belong to the connection leaving an automatic
 start block. Leaving the device selection empty includes every device in scope.
 Do not add a `person` classification filter for the baseline: the exercise's
 own YOLO model should analyze both person and no-person recordings.
 
-![Workflow design guide: automatic start connected to the forwarder, with device selection on the connection and callback settings on the forwarder](docs/images/workflow-designer.svg)
+![Hub designer with Recording classified connected to Forward to my system](docs/images/hub-workflow-designer.png)
 
-*Illustrated guide, not a Hub screenshot. The block name and available settings
-depend on the deployment's catalog.*
+*The live Hub designer with an unsaved example. Connect the two ports before
+configuring the trigger.*
+
+![The trigger's Which recordings section with Camera, Site, Camera group, and Objects in recording selectors](docs/images/hub-workflow-trigger.png)
+
+*Choose your own Agent under Camera. The screenshot intentionally leaves camera
+selection empty so no account-specific device names are published.*
+
+For a compact overview of the configuration, see the
+[illustrated workflow guide](docs/images/workflow-designer.svg).
 
 ### Configure the forwarder destination
 
-Select the **forwarder block** to open its settings. For the environment-backed
-RabbitMQ integration, configure the following parameters, or confirm that the
-administrator has set equivalent deployment defaults:
+Select **Forward to my system** to open its settings. Custom workflows use
+their own RabbitMQ destination; shared deployment integrations are reserved
+for global workflows. Enter your destination details explicitly rather than
+relying on the deployment's broker or credentials.
 
-| Forwarder parameter | Exercise setting | Corresponding worker setting |
+| Forwarder setting | Exercise setting | Corresponding worker setting |
 | --- | --- | --- |
-| `broker` | `rabbitmq` | The worker consumes RabbitMQ |
-| `host`, `port` | Destination broker hostname and port, e.g. `broker.example.com`, `5671` | `RABBITMQ_HOST=broker.example.com:5671` |
-| `username`, `password` | Credentials permitted to publish to the destination | `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD`: credentials permitted to consume |
-| `queue` | Existing destination queue, e.g. `person-detection-exercise` | `STAGE_QUEUE=person-detection-exercise` |
-| `vhost` | Destination virtual host, commonly `/` | `RABBITMQ_VHOST=/` |
-| `tls` | Enabled outside an approved trusted local network | `RABBITMQ_SCHEME=amqps` |
-| `mode` | **`callback`**, not `delivered` | `RESULT_MODE=http` for the final run |
+| **Provider** | **RabbitMQ** (`broker=rabbitmq`) | The worker consumes RabbitMQ |
+| **Completion mode** | **Wait for result** (`mode=callback`), not **Complete after delivery** | `RESULT_MODE=http` for the final run |
+| **Maximum retries** | Keep `5` for the baseline; this limits retries of failed forwarder delivery, not worker processing | No matching worker setting |
+| **Host**, **Port** | Destination broker hostname and port, e.g. `broker.example.com`, `5671` | `RABBITMQ_HOST=broker.example.com:5671` |
+| **Queue** | Destination queue, e.g. `person-detection-exercise` | `STAGE_QUEUE=person-detection-exercise` |
+| **Virtual host** | Destination virtual host, commonly `/`; blank uses `/`, not the deployment virtual host | `RABBITMQ_VHOST=/` |
+| **Use TLS** | Enabled outside an approved trusted local network | `RABBITMQ_SCHEME=amqps` |
+| **Declare destination queues** | Enabled if the forwarder's credentials may create durable quorum queues; otherwise have the administrator provision both queues first | The worker never declares queues |
+| **Destination dead-letter queue** | A different queue from **Queue**; blank uses `<queue>.forwarder-dead-letter` | No matching worker setting |
+| **Username**, **Password** | Your destination credentials, permitted to publish and declare/check queues as configured; deployment credentials are never used | `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD`: credentials permitted to consume |
+
+![Forwarder Delivery settings with RabbitMQ selected, Wait for result enabled, and Maximum retries set to 5](docs/images/hub-workflow-forwarder.png)
+
+*Wait for result is the UI label for callback mode. No destination credentials
+are shown.*
 
 The forwarder and worker must use the same broker, queue, virtual host, and TLS
 configuration. They can use separate publisher and consumer credentials.
 `STAGE_OPERATION=forwarder` matches the operation, not the workflow name or
 block label.
 
-In **callback** mode, Hub waits for your stage to return its result. In
-**delivered** mode, forwarding the message completes the stage immediately and
+In **Wait for result** (`callback`) mode, Hub waits for your stage to return
+its result. In **Complete after delivery** (`delivered`) mode, forwarding the
+message completes the stage immediately and
 the invocation has no callback block, so it cannot demonstrate this exercise's
 result-ingestion loop. The administrator must also configure
 `FORWARDER_CALLBACK_BASE_URL` to the public HTTPS Hub API base URL; you do not
@@ -202,8 +224,16 @@ Do not use Hub's internal engine/stage queue as the external destination. The
 worker consumes the safe, versioned invocation from **your destination queue**,
 not an internal `WorkflowRun`. It deliberately does not create queues, exchanges,
 or bindings, and requires consumer read access but no broker management or
-publish permissions. Have the administrator provision the destination or enable
-the forwarder's queue declaration before continuing.
+publish permissions. If **Declare destination queues** is disabled, both the
+destination and destination dead-letter queue must already exist. If enabled,
+the forwarder creates durable quorum queues when missing; existing queues must
+be compatible with those declarations. Provision them with the administrator
+or use credentials allowed to declare them.
+
+The destination dead-letter queue setting only creates or checks that queue.
+It does not automatically route failed external-consumer messages there;
+configure dead-letter routing separately on the broker or consumer. Never use
+Hub's internal failed-dispatch queue as the external dead-letter destination.
 
 Select **Create workflow** to save the disabled draft. No downstream block is
 needed: returning the result to Hub completes this single-stage workflow.
@@ -222,7 +252,8 @@ The callback token is separate from your Agent keys and RabbitMQ credentials.
 Create it for the owner whose organisation/project contains the workflow and
 recording.
 
-1. Open your Hub **Profile** page (`/profile`) and select **Access tokens**.
+1. Open your Hub **Profile** page (`/profile`) and select **Access tokens**
+   (`/profile?tab=access-tokens`).
    This section is currently shown for owner accounts. If it is absent, have
    the appropriate owner create a narrowly scoped token for the exercise.
 2. Select **Generate access token**.
@@ -239,12 +270,27 @@ recording.
 
 ![Access-token guide showing the Details, Expiry, and Permissions tabs, the single workflow-runs.update permission, and removal of the Bearer prefix for the worker](docs/images/access-token.svg)
 
-*Illustrated guide, not a Hub screenshot. No real token is shown.*
+The following screenshots show the live form with example values only.
+No token was generated for the screenshots.
+
+![Hub Generate access token dialog with the Details tab showing the example name and description](docs/images/hub-access-token-details.png)
+
+*Details: both the name and description are required.*
+
+![Hub access-token Expiry tab with the 24 hours preset selected](docs/images/hub-access-token-expiry.png)
+
+*Expiry: choose a lifetime that covers your exercise, not the literal date
+shown in this screenshot.*
+
+![Hub access-token Permissions tab with only workflow-runs.update selected](docs/images/hub-access-token-permissions.png)
+
+*Permissions: exactly one assigned permission, workflow-runs.update.*
 
 The dialog's copy control includes the `Bearer ` prefix for use in an HTTP
 Authorization header. **Remove that prefix** when setting
 `WORKFLOW_BEARER_TOKEN`: the exercise worker adds it itself. In your ignored
-`.env` file, use only the raw token:
+`.env` file, use only the raw token. The illustrated guide above summarizes
+that distinction:
 
 ```dotenv
 WORKFLOW_BEARER_TOKEN='<raw-token-without-Bearer-prefix>'
