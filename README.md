@@ -41,43 +41,45 @@ feed useful, structured results back into Hub.
 
 The included Go stage demonstrates the complete flow:
 
-```text
-Camera -> Agent -> Hub workflow -> Forwarder -> Your RabbitMQ -> Go stage
-                                  callback mode                   |
-Hub API <- authenticated workflow callback <---------------------+
-   |
-   +-> timeline marker
-   +-> recording description
+```mermaid
+flowchart TB
+    subgraph capture["At the edge"]
+        camera["RTSP camera"] --> agent["Kerberos Agent"]
+    end
+
+    subgraph orchestration["Kerberos Hub - workflow"]
+        workflow["Hub workflow"] --> forwarder["Forwarder<br/>Wait for result"]
+    end
+
+    subgraph processing["Your processing environment"]
+        queue[("Your RabbitMQ queue")] --> worker["Go stage<br/>Download video + run YOLO11n"]
+    end
+
+    subgraph results["Kerberos Hub - results"]
+        api["Hub API"] --> resolved["Workflow stage resolved"]
+        resolved -->|"Person detected"| enriched["Timeline marker<br/>Recording description"]
+        resolved -->|"No person detected"| unchanged["Recording unchanged"]
+    end
+
+    agent -->|"Upload recording"| workflow
+    forwarder -->|"Versioned invocation<br/>Signed media URL"| queue
+    worker -->|"Authenticated callback<br/>Analysis result"| api
+
+    classDef edgeNode fill:#eff6ff,stroke:#2563eb,color:#1e3a8a
+    classDef hubNode fill:#f5f3ff,stroke:#7c3aed,color:#4c1d95
+    classDef workerNode fill:#fff7ed,stroke:#ea580c,color:#7c2d12
+    classDef resultNode fill:#f0fdf4,stroke:#16a34a,color:#14532d
+
+    class camera,agent edgeNode
+    class workflow,forwarder,api hubNode
+    class queue,worker workerNode
+    class resolved,enriched,unchanged resultNode
 ```
 
 It downloads a recording from the signed URL in a workflow invocation, runs
 YOLO11n person detection, and submits the result to Hub. The implementation is
 ready to run once the Agent, workflow designer, forwarder destination,
 recording interval, and Hub callback credentials are configured.
-
-## Current status
-
-The processing path works end to end:
-
-- Agent recordings arrive in Hub.
-- A workflow created in the designer selects recordings from your Agent.
-- The forwarder dispatches external workflow invocations to your RabbitMQ queue.
-- The worker downloads the signed media URL.
-- GoCV decodes and samples the video.
-- YOLO11n runs through the Go ONNX Runtime binding.
-- A detected person produces:
-  - a timeline `marker`
-  - a `media-patch` that updates the recording description.
-- A recording without a person returns a routing result and does not modify the
-  recording.
-- Hub accepts the bearer-authenticated callback and resolves the workflow
-  stage.
-
-The **visual workflow designer and forwarder block are available**. You create
-and activate the workflow in Hub; an administrator still needs to enable the
-workflow engine and forwarder service and make the forwarder operation available
-in the deployment's block catalog. RabbitMQ access and the public callback base
-URL are deployment prerequisites, not something the exercise worker provisions.
 
 ## Prerequisites
 
