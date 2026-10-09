@@ -51,6 +51,7 @@
       "mode": "auto",
       "program": "${workspaceFolder}",
       "cwd": "${workspaceFolder}",
+      "args": ["-once"],
       "envFile": "${workspaceFolder}/.env",
       "env": {
         "RESULT_MODE": "http"
