@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="480" viewBox="0 0 1000 480" role="img" aria-labelledby="title desc">
+  <title id="title">Create a narrowly scoped callback access token</title>
+  <desc id="desc">Illustrated guide, not a screenshot. In Profile, open Access tokens and Generate access token. Fill Details, choose a short Expiry, then assign only workflow-runs.update. Copy the token and remove the Bearer prefix for WORKFLOW_BEARER_TOKEN.</desc>
+  <rect width="1000" height="480" rx="16" fill="#f8fafc"/>
+  <g font-family="Arial, sans-serif" fill="#0f172a">
+    <text x="32" y="42" font-size="24" font-weight="700">Profile / Access tokens / Generate access token</text>
+    <text x="32" y="70" font-size="14" fill="#475569">Illustrated guide - no real token or account data</text>
+    <rect x="32" y="100" width="290" height="190" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+    <circle cx="60" cy="130" r="15" fill="#2563eb"/>
+    <text x="60" y="135" text-anchor="middle" font-size="15" fill="#ffffff">1</text>
+    <text x="86" y="136" font-size="20" font-weight="700">Details</text>
+    <text x="52" y="173" font-size="14" fill="#475569">Name</text>
+    <text x="52" y="198" font-size="16">person-detection-exercise</text>
+    <text x="52" y="235" font-size="14" fill="#475569">Description</text>
+    <text x="52" y="260" font-size="15">Return workflow results</text>
+    <rect x="342" y="100" width="230" height="190" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+    <circle cx="370" cy="130" r="15" fill="#2563eb"/>
+    <text x="370" y="135" text-anchor="middle" font-size="15" fill="#ffffff">2</text>
+    <text x="396" y="136" font-size="20" font-weight="700">Expiry</text>
+    <text x="362" y="173" font-size="14" fill="#475569">Quick expiry</text>
+    <rect x="362" y="190" width="122" height="40" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="423" y="215" text-anchor="middle" font-size="16" fill="#1d4ed8">24 hours</text>
+    <text x="362" y="261" font-size="14" fill="#475569">Keep the lifetime short.</text>
+    <rect x="592" y="100" width="376" height="190" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+    <circle cx="620" cy="130" r="15" fill="#2563eb"/>
+    <text x="620" y="135" text-anchor="middle" font-size="15" fill="#ffffff">3</text>
+    <text x="646" y="136" font-size="20" font-weight="700">Permissions</text>
+    <text x="612" y="173" font-size="14" fill="#475569">Area: workflow-runs</text>
+    <rect x="612" y="194" width="20" height="20" rx="4" fill="#2563eb"/>
+    <path d="M616 204 l4 4 8-9" fill="none" stroke="#ffffff" stroke-width="2"/>
+    <text x="643" y="211" font-size="16">update only</text>
+    <rect x="612" y="236" width="336" height="34" rx="17" fill="#dcfce7"/>
+    <text x="780" y="258" text-anchor="middle" font-size="16" fill="#166534">workflow-runs.update</text>
+    <rect x="32" y="318" width="936" height="128" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
+    <text x="52" y="350" font-size="18" font-weight="700">Generate and copy privately</text>
+    <text x="52" y="381" font-size="16">The dialog copies: Bearer &lt;raw-token&gt;</text>
+    <text x="52" y="411" font-family="monospace" font-size="16">WORKFLOW_BEARER_TOKEN='&lt;raw-token&gt;'</text>
+    <text x="580" y="381" font-size="16" font-weight="700" fill="#1d4ed8">Remove the Bearer prefix.</text>
+    <text x="580" y="411" font-size="14" fill="#475569">The worker adds it. Never screenshot a real token.</text>
+  </g>
+</svg>

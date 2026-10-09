@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600" role="img" aria-labelledby="title desc">
+  <title id="title">Design the person-detection workflow</title>
+  <desc id="desc">Illustrated guide, not a screenshot. Connect the automatic start output to the forwarder input. Select the connection to choose the exercise Agent and an Always schedule with no classification filter. Select the forwarder for RabbitMQ destination settings and callback mode. The external worker uses the same destination queue and returns results through Hub API.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#2563eb"/>
+    </marker>
+  </defs>
+  <rect width="1000" height="600" rx="16" fill="#f8fafc"/>
+  <g font-family="Arial, sans-serif" fill="#0f172a">
+    <text x="32" y="42" font-size="24" font-weight="700">Person detection exercise</text>
+    <text x="32" y="70" font-size="14" fill="#475569">Illustrated designer guide - configure while disabled, then save and enable for testing</text>
+    <rect x="32" y="100" width="240" height="116" rx="12" fill="#ffffff" stroke="#93c5fd" stroke-width="2"/>
+    <text x="52" y="135" font-size="14" fill="#2563eb">START BLOCK</text>
+    <text x="52" y="166" font-size="22" font-weight="700">Automatic start</text>
+    <text x="52" y="194" font-size="14" fill="#475569">New matching recordings</text>
+    <circle cx="272" cy="158" r="7" fill="#2563eb"/>
+    <path d="M282 158 H692" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)"/>
+    <rect x="351" y="140" width="265" height="36" rx="18" fill="#dbeafe"/>
+    <text x="483" y="163" text-anchor="middle" font-size="15" fill="#1d4ed8">Select this connection for sources</text>
+    <rect x="704" y="100" width="264" height="116" rx="12" fill="#ffffff" stroke="#a78bfa" stroke-width="2"/>
+    <circle cx="704" cy="158" r="7" fill="#7c3aed"/>
+    <text x="724" y="135" font-size="14" fill="#7c3aed">FORWARDER BLOCK</text>
+    <text x="724" y="166" font-size="22" font-weight="700">forwarder</text>
+    <text x="724" y="194" font-size="14" fill="#475569">Select for destination settings</text>
+    <rect x="32" y="252" width="446" height="182" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="52" y="286" font-size="19" font-weight="700">Connection settings</text>
+    <text x="52" y="320" font-size="16">Devices: your exercise Agent only</text>
+    <text x="52" y="351" font-size="16">Schedule: Always</text>
+    <text x="52" y="382" font-size="16">Classifications / conditions: unset</text>
+    <text x="52" y="411" font-size="14" fill="#475569">Empty Devices would include all devices in scope.</text>
+    <rect x="498" y="252" width="470" height="182" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="518" y="286" font-size="19" font-weight="700">Forwarder settings</text>
+    <text x="518" y="320" font-size="16">broker: rabbitmq / tls: enabled</text>
+    <text x="518" y="351" font-size="16">host, port, credentials, queue, vhost</text>
+    <text x="518" y="382" font-size="16" font-weight="700" fill="#7c3aed">mode: callback (not delivered)</text>
+    <text x="518" y="411" font-size="14" fill="#475569">Hub callback base URL is deployment configuration.</text>
+    <rect x="32" y="464" width="936" height="104" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
+    <text x="52" y="496" font-size="18" font-weight="700">Outside the designer: your worker</text>
+    <text x="52" y="526" font-family="monospace" font-size="15">Same destination queue / STAGE_OPERATION=forwarder / RESULT_MODE=http</text>
+    <text x="52" y="551" font-size="15" fill="#475569">Consume invocation, run YOLO, POST result with your token, verify the resolved run in Hub.</text>
+  </g>
+</svg>
