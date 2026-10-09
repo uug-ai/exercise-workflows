@@ -189,6 +189,12 @@ their own RabbitMQ destination; shared deployment integrations are reserved
 for global workflows. Enter your destination details explicitly rather than
 relying on the deployment's broker or credentials.
 
+**Fill in the highlighted fields:** **Host** (your RabbitMQ hostname), **Port**,
+**Queue**, **Username**, and **Password** are required before enabling the
+workflow. Supply your own destination broker values; the illustration uses
+placeholders, not credentials to copy. Confirm **Virtual host** too: leave `/`
+only if your broker uses that default.
+
 | Forwarder setting | Exercise setting | Corresponding worker setting |
 | --- | --- | --- |
 | **Provider** | **RabbitMQ** (`broker=rabbitmq`) | The worker consumes RabbitMQ |

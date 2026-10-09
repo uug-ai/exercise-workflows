@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="808" viewBox="0 0 1000 808" role="img" aria-labelledby="title desc">
   <title id="title">Design the person-detection workflow</title>
-  <desc id="desc">Illustrated guide, not a screenshot. Connect the automatic start output to the forwarder input. Select the connection to choose the exercise Agent and an Always schedule with no classification filter. Select the forwarder for RabbitMQ destination settings and callback mode. The external worker uses the same destination queue and returns results through Hub API.</desc>
+  <desc id="desc">Illustrated guide, not a screenshot. Connect the automatic start output to the forwarder input. Select the connection to choose the exercise Agent and an Always schedule with no classification filter. In the forwarder, fill in the highlighted required RabbitMQ destination fields: Host (hostname), Port, Queue, Username, and Password. Virtual host defaults to /; change it if your broker requires another value. Enable TLS and choose Wait for result (callback mode). The external worker uses the same destination queue and returns results through Hub API.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
       <path d="M0 0 L10 5 L0 10 Z" fill="#2563eb"/>
     </marker>
   </defs>
-  <rect width="1000" height="600" rx="16" fill="#f8fafc"/>
+  <rect width="1000" height="808" rx="16" fill="#f8fafc"/>
   <g font-family="Arial, sans-serif" fill="#0f172a">
     <text x="32" y="42" font-size="24" font-weight="700">Person detection exercise</text>
     <text x="32" y="70" font-size="14" fill="#475569">Illustrated designer guide - configure while disabled, then save and enable for testing</text>
@@ -29,15 +29,34 @@
     <text x="52" y="351" font-size="16">Schedule: Always</text>
     <text x="52" y="382" font-size="16">Classifications / conditions: unset</text>
     <text x="52" y="411" font-size="14" fill="#475569">Empty Camera selection includes all devices in scope.</text>
-    <rect x="498" y="252" width="470" height="182" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+    <rect x="498" y="252" width="470" height="390" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
     <text x="518" y="286" font-size="19" font-weight="700">Forwarder settings</text>
-    <text x="518" y="320" font-size="16">broker: rabbitmq / tls: enabled</text>
-    <text x="518" y="351" font-size="16">host, port, credentials, queue, vhost</text>
-    <text x="518" y="382" font-size="16" font-weight="700" fill="#7c3aed">Wait for result (mode: callback)</text>
-    <text x="518" y="411" font-size="14" fill="#475569">Hub callback base URL is deployment configuration.</text>
-    <rect x="32" y="464" width="936" height="104" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
-    <text x="52" y="496" font-size="18" font-weight="700">Outside the designer: your worker</text>
-    <text x="52" y="526" font-family="monospace" font-size="15">Same destination queue / STAGE_OPERATION=forwarder / RESULT_MODE=http</text>
-    <text x="52" y="551" font-size="15" fill="#475569">Consume invocation, run YOLO, POST result with your token, verify the resolved run in Hub.</text>
+    <text x="518" y="314" font-size="14" fill="#475569">Provider: RabbitMQ (your destination broker)</text>
+    <text x="518" y="338" font-size="14" font-weight="700" fill="#7c3aed">Fill in these required fields before enabling *</text>
+    <g id="required-rabbitmq-fields">
+      <rect x="518" y="354" width="430" height="170" rx="8" fill="#fff7ed" stroke="#f59e0b" stroke-width="2"/>
+      <g font-size="14" font-weight="700" fill="#7c2d12">
+        <text x="532" y="380">Host (hostname) *</text>
+        <text x="532" y="410">Port *</text>
+        <text x="532" y="440">Queue *</text>
+        <text x="532" y="470">Username *</text>
+        <text x="532" y="500">Password *</text>
+      </g>
+      <g font-family="monospace" font-size="13">
+        <text x="704" y="380">&lt;your broker hostname&gt;</text>
+        <text x="704" y="410">5671 (TLS) / 5672 (no TLS)</text>
+        <text x="704" y="440">&lt;your destination queue&gt;</text>
+        <text x="704" y="470">&lt;your broker username&gt;</text>
+        <text x="704" y="500">&lt;your broker password&gt;</text>
+      </g>
+    </g>
+    <rect x="518" y="537" width="430" height="32" rx="6" fill="#f1f5f9" stroke="#cbd5e1"/>
+    <text x="532" y="558" font-size="13">Virtual host: / (change if your broker uses another vhost)</text>
+    <text x="518" y="594" font-size="14" font-weight="700" fill="#7c3aed">Use TLS: enabled | Wait for result (mode: callback)</text>
+    <text x="518" y="621" font-size="13" fill="#475569">Hub callback base URL is deployment configuration.</text>
+    <rect x="32" y="672" width="936" height="104" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
+    <text x="52" y="704" font-size="18" font-weight="700">Outside the designer: your worker</text>
+    <text x="52" y="734" font-family="monospace" font-size="15">Same destination queue / STAGE_OPERATION=forwarder / RESULT_MODE=http</text>
+    <text x="52" y="759" font-size="15" fill="#475569">Consume invocation, run YOLO, POST result with your token, verify the resolved run in Hub.</text>
   </g>
 </svg>
