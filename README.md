@@ -42,38 +42,53 @@ feed useful, structured results back into Hub.
 The included Go stage demonstrates the complete flow:
 
 ```mermaid
-flowchart TB
-    subgraph capture["At the edge"]
-        camera["RTSP camera"] --> agent["Kerberos Agent"]
+---
+config:
+    theme: base
+    themeVariables:
+        fontFamily: Arial, sans-serif
+        fontSize: 14px
+        actorBkg: "#eff6ff"
+        actorBorder: "#93c5fd"
+        actorTextColor: "#0f172a"
+        actorLineColor: "#cbd5e1"
+        signalColor: "#475569"
+        signalTextColor: "#334155"
+        noteBkgColor: "#f0fdf4"
+        noteBorderColor: "#86efac"
+        noteTextColor: "#14532d"
+        labelBoxBkgColor: "#f8fafc"
+        labelBoxBorderColor: "#cbd5e1"
+        labelTextColor: "#334155"
+        loopTextColor: "#334155"
+    sequence:
+        mirrorActors: false
+        actorMargin: 25
+        width: 115
+        height: 48
+        boxMargin: 8
+        noteMargin: 8
+        messageMargin: 30
+---
+sequenceDiagram
+    autonumber
+    participant Agent as Camera + Agent
+    participant Hub as Kerberos Hub
+    participant Queue as RabbitMQ
+    participant Worker as Go / YOLO11n
+    Agent->>Hub: Upload recording
+    Hub->>Queue: Forwarder dispatch<br/>Invocation + signed URL
+    Queue->>Worker: Deliver job
+    activate Worker
+    Note over Worker: Download video<br/>Detect persons
+    Worker->>Hub: Authenticated callback<br/>Analysis result
+    deactivate Worker
+    Hub->>Hub: Resolve stage
+    alt Person detected
+        Note over Hub: Timeline marker<br/>Recording description
+    else No person detected
+        Note over Hub: Recording unchanged
     end
-
-    subgraph orchestration["Kerberos Hub - workflow"]
-        workflow["Hub workflow"] --> forwarder["Forwarder<br/>Wait for result"]
-    end
-
-    subgraph processing["Your processing environment"]
-        queue[("Your RabbitMQ queue")] --> worker["Go stage<br/>Download video + run YOLO11n"]
-    end
-
-    subgraph results["Kerberos Hub - results"]
-        api["Hub API"] --> resolved["Workflow stage resolved"]
-        resolved -->|"Person detected"| enriched["Timeline marker<br/>Recording description"]
-        resolved -->|"No person detected"| unchanged["Recording unchanged"]
-    end
-
-    agent -->|"Upload recording"| workflow
-    forwarder -->|"Versioned invocation<br/>Signed media URL"| queue
-    worker -->|"Authenticated callback<br/>Analysis result"| api
-
-    classDef edgeNode fill:#eff6ff,stroke:#2563eb,color:#1e3a8a
-    classDef hubNode fill:#f5f3ff,stroke:#7c3aed,color:#4c1d95
-    classDef workerNode fill:#fff7ed,stroke:#ea580c,color:#7c2d12
-    classDef resultNode fill:#f0fdf4,stroke:#16a34a,color:#14532d
-
-    class camera,agent edgeNode
-    class workflow,forwarder,api hubNode
-    class queue,worker workerNode
-    class resolved,enriched,unchanged resultNode
 ```
 
 It downloads a recording from the signed URL in a workflow invocation, runs
