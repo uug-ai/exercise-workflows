@@ -105,8 +105,9 @@ Runtime, and the checksum-verified YOLO11n model.
 1. Open [app.kerberos.io](https://app.kerberos.io), create a Hub account, and
    sign in. Complete email verification if prompted.
 2. Contact your tutor using the email address you registered with and request
-   a **valid Hub plan for the exercise**. The tutor needs to identify your
-   account; do not send your account password.
+   a **valid Hub plan for the exercise** and the **RabbitMQ destination
+   details** needed in Step 2. The tutor needs to identify your account; do
+   not send your account password.
 3. The tutor will **assign the plan to your account** and **generate the
    credentials** needed to connect your Agent. Wait for the tutor to confirm
    that your plan is active and provide the credentials before continuing.
@@ -125,9 +126,9 @@ them out of Git, screenshots, and logs.
 
 The Agent keys are separate from your Hub account password, the RabbitMQ
 credentials used in Step 2, and the scoped callback token you create yourself
-in Step 3. Ask your tutor for the RabbitMQ destination details if they have
-not already been supplied; assigning a Hub plan does not configure that
-external destination.
+in Step 3. Obtain the RabbitMQ destination details from your tutor before
+configuring the forwarder; assigning a Hub plan does not configure that
+external destination automatically.
 
 ## 1. Connect an Agent
 
@@ -222,11 +223,25 @@ their own RabbitMQ destination; shared deployment integrations are reserved
 for global workflows. Enter your destination details explicitly rather than
 relying on the deployment's broker or credentials.
 
+**Ask your tutor for the RabbitMQ information before filling in these settings:**
+
+- **Host** (broker hostname) and **Port**
+- your assigned **Queue** and **Virtual host**
+- **Username** and **Password** for the forwarder
+- whether **Use TLS** must be enabled
+- the worker's consumer credentials, if different from the forwarder's
+- the destination dead-letter queue name, and whether both queues are already
+  provisioned or the forwarder is allowed to declare them
+
+Receive passwords through the tutor's approved private channel. Do not use
+your Hub account password or Agent keys as RabbitMQ credentials.
+
 **Fill in the highlighted fields:** **Host** (your RabbitMQ hostname), **Port**,
 **Queue**, **Username**, and **Password** are required before enabling the
-workflow. Supply your own destination broker values; the illustration uses
-placeholders, not credentials to copy. Confirm **Virtual host** too: leave `/`
-only if your broker uses that default.
+workflow. Use the destination broker values supplied by your tutor; the
+illustration uses placeholders, not credentials to copy. Confirm **Virtual
+host** too: use `/` only if the tutor confirms that it is your assigned
+virtual host.
 
 | Forwarder setting | Exercise setting | Corresponding worker setting |
 | --- | --- | --- |
@@ -799,6 +814,7 @@ Useful references:
 
 - [ ] Hub account is created and the tutor has assigned an active exercise plan.
 - [ ] Tutor-provided Agent credentials and the correct organisation/project are available.
+- [ ] Tutor-provided RabbitMQ connection details, credentials, and queue provisioning instructions are available.
 - [ ] Agent camera preview works.
 - [ ] Agent is online in Hub.
 - [ ] A recording is playable in Hub.
