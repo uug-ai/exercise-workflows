@@ -243,7 +243,7 @@ The worker calls the run-specific endpoint from the invocation:
 
 ```http
 POST /workflows/runs/{runId}
-Authorization: Bearer <raw-token>
+Authorization: Bearer <token>
 Content-Type: application/json
 Idempotency-Key: <runId>:<operation>
 ```

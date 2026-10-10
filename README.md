@@ -480,15 +480,6 @@ sets `RESULT_MODE=http` and `-once`, then exits after one acknowledged delivery.
 The profile reads `.env` afresh when you start it. The
 [command-line equivalent](ADDENDUM.md#command-line-http-callback) is optional.
 
-The worker calls the run-specific endpoint from the invocation:
-
-```http
-POST /workflows/runs/{runId}
-Authorization: Bearer <token>
-Content-Type: application/json
-Idempotency-Key: <runId>:<operation>
-```
-
 The worker receives the invocation, downloads the recording, runs YOLO11n,
 and submits its analysis result to Hub. Confirm the logged `runId` matches the
 run you noted in Hub, the logged `media.key` matches the recording's `videoFile`,
@@ -516,16 +507,8 @@ test run and repeat queue isolation and timestamp verification before
 posting. Do not process different recordings continuously with one fixed
 `MARKER_START_TIMESTAMP`.
 
-| Symptom | Check |
-| --- | --- |
-| No workflow run appears | Workflow is enabled and saved; automatic start is connected; the connection selects your Agent and uses an active schedule; trigger a fresh recording or re-analysis. |
-| A run appears but nothing reaches your queue | Forwarder service, catalog operation, destination credentials, broker reachability, queue, virtual host, and TLS settings. |
-| Worker says it cannot consume `STAGE_QUEUE` | Confirm the queue exists in that virtual host and the consumer has read permission. For a new destination with declaration enabled, first trigger the forwarder's delivery as described in queue preparation. |
-| Invocation has no `callback.url` | Forwarder mode must be `callback`, with the public Hub API base URL configured. Do not use this invocation to verify callback completion. |
-| Callback returns `401` or `403` | Raw token has no `Bearer ` prefix, is unexpired, belongs to the correct tenant, and has exactly `workflow-runs.update`. |
-| Callback returns `409` | A different result already completed that run/stage; use a fresh run rather than changing an already accepted result. |
-| Worker cannot download the recording | Signed URL is reachable from the dev container and has not expired; re-analysis creates a fresh invocation. |
-| Marker appears at the wrong time | Copy `data.media.startTimestamp` for the queued test recording, confirm it is the only invocation in the queue, reload `.env`, and use a one-shot callback. The value is Unix seconds, not an offset or milliseconds. |
+If a step fails, consult the [troubleshooting reference](ADDENDUM.md#troubleshooting)
+and discuss the evidence with your tutor before retrying.
 
 Disable and save the exercise workflow when finished so new recordings no
 longer queue work for an unattended worker. Delete the exercise access token.
