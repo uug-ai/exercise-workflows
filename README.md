@@ -128,11 +128,25 @@ Runtime, and the checksum-verified YOLO11n model.
    that your plan is active and provide the credentials before continuing.
 4. Confirm that you have:
    - the Hub API URI;
-   - the Agent public access key and private key;
-   - the organisation/project to use for the exercise; and
    - the site ID, if the tutor has assigned one.
+   - the Agent public access key and private key; and
+   - the organisation/project to use for the exercise.
 5. Sign in again or refresh Hub after the tutor provisions access, and select
    the organisation/project they specified.
+6. **Create your own site before connecting the Agent:**
+   - Open **Sites** (`/sites`) and select **Add Site**.
+   - Enter a unique name such as `Your name - exercise`, a description, an
+     address selected from the address suggestions, and badge initials.
+     Choose a badge colour or keep the default. Leave device/group assignments
+     and Vault settings unset for now.
+   - Select **Add Site** to save, then open your new site.
+   - In its **Overview**, copy the **Site ID**. You can also get it from the
+     site detail URL: `https://app.kerberos.io/sites/<site-id>`.
+     Copy only the ID, not the site name or the full URL.
+
+If **Add Site** is unavailable, ask your tutor to confirm your owner/admin
+permissions in the selected organisation/project. The site is created by you,
+not assigned by the tutor; you will use its ID in Step 1.
 
 **Creating an account alone is not enough to start the exercise.** If the plan
 or credentials are missing, contact your tutor before proceeding to Step 1.
@@ -148,12 +162,13 @@ external destination automatically.
 ## 1. Connect an Agent
 
 After your tutor confirms access is ready, open **Devices** in Hub and select
-**Add Agent**. Use the connection details and credentials supplied in Step 0:
+**Add Agent**. Use the tutor-provided connection details and credentials,
+together with the ID of the site you created in Step 0:
 
 - the Hub API URI;
 - the public access key;
 - the private key; and
-- the site ID, when required.
+- the ID of your new site.
 
 Start an Agent after replacing the placeholders:
 
@@ -168,11 +183,12 @@ docker run -d --name introduction-agent --restart unless-stopped \
   -e AGENT_HUB_URI='https://api.example.com' \
   -e AGENT_HUB_KEY='<public-access-key>' \
   -e AGENT_HUB_PRIVATE_KEY='<private-key>' \
+  -e AGENT_HUB_SITE='<site-id>' \
   kerberos/agent:latest
 ```
 
-Add `-e AGENT_HUB_SITE='<site-id>'` when a site is assigned. Use a unique
-`AGENT_KEY`; Hub uses it as the stable device identity.
+Replace `<site-id>` with the ID copied from your own site's detail page.
+Use a unique `AGENT_KEY`; Hub uses it as the stable device identity.
 
 Open [http://localhost:8080](http://localhost:8080). The default local Agent
 credentials are `root` / `root`; change them before exposing the UI outside
@@ -181,7 +197,7 @@ your machine.
 Verify that:
 
 1. the camera preview works
-2. the Agent appears online in Hub
+2. the Agent appears online in Hub and belongs to the site you created
 3. a recording made by the Agent is playable in Hub
 
 See the
@@ -757,6 +773,7 @@ Useful references:
 - [ ] Hub account is created and the tutor has assigned an active exercise plan.
 - [ ] Tutor-provided Agent credentials and the correct organisation/project are available.
 - [ ] Tutor-provided RabbitMQ connection details, credentials, and queue provisioning instructions are available.
+- [ ] Own site is created in the exercise organisation/project, and its Site ID is set in `AGENT_HUB_SITE`.
 - [ ] Agent camera preview works.
 - [ ] Agent is online in Hub.
 - [ ] A recording is playable in Hub.
