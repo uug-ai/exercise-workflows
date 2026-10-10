@@ -390,7 +390,7 @@ RABBITMQ_PASSWORD='your password with $ # and spaces'
 WORKFLOW_BEARER_TOKEN='your-raw-Hub-token'
 ```
 
-The VS Code profiles read environment-file values; the CLI commands below
+The VS Code HTTP callback profile reads environment-file values; the CLI commands below
 **execute the file as shell input**. With single quotes, dollar signs, spaces,
 and `#` remain literal in both paths. Keep the shared file to assignments and
 comments, not commands or shell quote-concatenation expressions.
@@ -423,7 +423,7 @@ Use the same approach for another credential if needed, with its variable name.
 | `ONNXRUNTIME_SHARED_LIBRARY` | ONNX Runtime shared-library path |
 | `YOLO_CONFIDENCE` | Person confidence threshold in `(0, 1]`; default `0.5` |
 | `YOLO_SAMPLE_FPS` | Frames analyzed per second in `(0, 30]`; default `1` |
-| `RESULT_MODE` | `preview`, `bypass`, or `http` |
+| `RESULT_MODE` | Set to `http` to submit the result to Hub |
 | `WORKFLOW_BEARER_TOKEN` | Raw Hub token with `workflow-runs.update`, without the `Bearer ` prefix; required in HTTP mode |
 | `LOG_LEVEL` | Logrus level; default `info` |
 | `LOG_OUTPUT` | `text` or `json`; default `text` |
@@ -449,38 +449,17 @@ share request headers or signed URLs from developer tools.
 
 The example file deliberately leaves the timestamp blank so startup fails
 until you supply it. Do not use the response envelope's `metadata.timestamp`,
-the workflow run's **Started** time, the current time, or the offline fixture's
-synthetic `1700000000` for a live callback.
+the workflow run's **Started** time, the current time, or a synthetic example
+timestamp for a live callback.
 
 This timestamp is one value per worker process, not derived automatically
 from each invocation. It is suitable for the one-recording exercise, not a
-mixed-recording stream. The initial preview never posts a marker to Hub; after
-previewing, **match its logged `media.key` to `videoFile` and update the timestamp
-for that exact recording before the HTTP callback**. Reload the environment
-and restart the worker after changing it. The example does not yet derive
+mixed-recording stream. In Step 6, queue one test recording and **set the
+timestamp for that exact recording before starting the HTTP callback worker**.
+Reload the environment after changing it. The example does not yet derive
 entry and exit timestamps from a person track.
 
 ## 6. Run the stage
-
-VS Code launch profiles are defined in
-[.vscode/launch.json](.vscode/launch.json).
-
-### Offline fixture
-
-Replace the placeholder `media.signedUrl` in
-[examples/workflow-invocation.json](examples/workflow-invocation.json) with a
-reachable HTTP or HTTPS video URL no larger than 100 MiB.
-
-Select **Stage: offline sample** in **Run and Debug**, or run:
-
-```bash
-MARKER_START_TIMESTAMP=1700000000 \
-  go run . -input examples/workflow-invocation.json
-```
-
-Offline input always prints a local preview. It does not consume RabbitMQ or
-call Hub. The timestamp in this command is synthetic and only for the offline
-fixture; the VS Code profile uses the timestamp you set in `.env`.
 
 ### Prepare the destination queue
 
@@ -490,12 +469,12 @@ Choose the startup order that matches your broker:
 
 - **Queues already exist:** have the administrator confirm both the destination
   and destination dead-letter queue exist in the correct virtual host, with
-  compatible settings and permissions. Start **Stage: queue preview** first,
-  then enable and save the workflow and trigger one test recording.
+  compatible settings and permissions. Enable and save the workflow and
+  trigger one test recording. Leave the worker stopped for now.
 - **New queues, Declare destination queues enabled:** enable and save the
   workflow and trigger one test recording first. The forwarder creates the
   queues and publishes the invocation; it can wait there without a consumer.
-  Confirm the queues exist before starting **Stage: queue preview**.
+  Confirm the queues exist before starting the worker.
 - **New queues, Declare destination queues disabled:** have the administrator
   provision both queues first, then follow the existing-queues path. Starting
   the worker or saving the workflow will not create them.
@@ -505,62 +484,27 @@ has arrived. If you started the example Agent in Step 1, run
 `docker stop introduction-agent` **on the Docker host** to pause that example
 container temporarily. Do not stop an unrelated or production Agent.
 
-Before the HTTP step, confirm the dedicated queue contains only the test
-invocation you previewed. If other recordings have queued, do not assume
-`-once` will select your chosen recording: arrange an isolated test delivery
-with the administrator instead of draining messages with bypass mode.
+Open your workflow's **View runs** in Hub and find the run for the test clip.
+Note its **Run ID**. Open that recording in Hub and use the timestamp procedure
+in Step 5 to set `MARKER_START_TIMESTAMP` for it.
 
-### Queue preview
-
-Select **Stage: queue preview**, or run:
-
-```bash
-set -a
-. ./.env
-set +a
-go run .
-```
-
-Follow the appropriate startup order under **Prepare the destination queue**.
-A disabled workflow does not dispatch new work; an existing queue is required
-before the worker can consume.
-
-Preview mode:
-
-1. receives one invocation
-2. downloads and analyzes the recording
-3. prints the generated result
-4. requeues the RabbitMQ delivery
-5. exits without calling Hub
-
-Preview is not a broker peek. It changes redelivery state and may count toward
-a configured delivery limit.
-
-Note the preview's `runId` and the invocation's logged `media.key`. Look up that
-exact recording using the timestamp procedure in Step 5 and update `.env` if
-necessary. Keep the requeued invocation for the HTTP step; do not trigger a
-second recording merely to switch modes.
-
-### Queue bypass
-
-Select **Stage: queue bypass** or set `RESULT_MODE=bypass`.
-
-Bypass analyzes and prints each result, acknowledges the delivery, and does not
-call Hub. It permanently removes successful messages from the queue without
-resolving their workflow stages. Use it only for deliberate queue draining.
+Before starting the worker, ask your tutor to confirm that the dedicated queue
+contains only this test invocation and that no other consumer is using it.
+If other recordings have queued, do not assume `-once` will select your chosen
+recording: arrange an isolated test delivery with the tutor before continuing.
+Do not trigger another recording merely to start the worker.
 
 ### HTTP callback
 
-Set `WORKFLOW_BEARER_TOKEN` to the raw token from Step 3. Select **Stage: HTTP
-callback** to process the same invocation that preview requeued. This profile
-sets `RESULT_MODE=http` and `-once`, then exits after one acknowledged delivery.
-The workflow was enabled during queue preparation; do not create a new run for
-this step.
-
 Before starting, confirm the queue contains only that test invocation, its
 signed media URL is still valid, and `MARKER_START_TIMESTAMP` matches its
-recording. For the command-line equivalent, set `RESULT_MODE=http` in `.env`,
-reload it, and run:
+recording. Set `WORKFLOW_BEARER_TOKEN` to the raw token from Step 3 and
+`RESULT_MODE=http` in `.env`.
+
+In VS Code, open **Run and Debug**, select **Stage: HTTP callback**, and start
+it. This profile is defined in [.vscode/launch.json](.vscode/launch.json); it
+sets `RESULT_MODE=http` and `-once`, then exits after one acknowledged delivery.
+For the command-line equivalent, load `.env` and run:
 
 ```bash
 set -a
@@ -571,7 +515,7 @@ go run . -once
 
 If using an interactive credential override from Step 5, enter it again after
 loading the file and before `go run`. The VS Code profile reads `.env` afresh
-and overrides the file's default `preview` mode.
+when you start it.
 
 The worker calls the run-specific endpoint from the invocation:
 
@@ -582,9 +526,11 @@ Content-Type: application/json
 Idempotency-Key: <runId>:<operation>
 ```
 
-Confirm the worker logs show the same `runId` you previewed and a successful
-callback before moving to Hub verification. A `2xx` alone does not prove the
-marker timestamp was correct.
+The worker receives the invocation, downloads the recording, runs YOLO11n,
+and submits its analysis result to Hub. Confirm the logged `runId` matches the
+run you noted in Hub, the logged `media.key` matches the recording's `videoFile`,
+and the callback succeeds before moving to Hub verification. A `2xx` alone
+does not prove the marker timestamp was correct.
 
 ## 7. Verify the result in Hub
 
@@ -596,16 +542,14 @@ marker timestamp was correct.
 3. Open the recording in Hub. For a clip containing a person, verify that the
    `person detected` marker appears at your configured interval and that the
    recording description contains the YOLO detection summary.
-4. Repeat queue preparation, preview, timestamp lookup, and one-shot callback
+4. Repeat queue preparation, timestamp lookup, and one-shot callback
    with a recording without a person. To resume the example Agent, run
    `docker start introduction-agent` on the Docker host, then pause it again
    after the next test clip. The run should finish, but no marker or
    recording-description change should be created by this stage.
 
-Preview mode deliberately leaves the stage waiting: it never calls Hub.
-After previewing an invocation, process that requeued delivery in HTTP mode
-while its signed media URL and callback run remain valid, or create a fresh run.
-If a fresh run is needed, repeat preview and timestamp verification before
+If the signed media URL or callback run is no longer valid, arrange a fresh
+test run and repeat queue isolation and timestamp verification before
 posting. Do not process different recordings continuously with one fixed
 `MARKER_START_TIMESTAMP`.
 
@@ -618,7 +562,7 @@ posting. Do not process different recordings continuously with one fixed
 | Callback returns `401` or `403` | Raw token has no `Bearer ` prefix, is unexpired, belongs to the correct tenant, and has exactly `workflow-runs.update`. |
 | Callback returns `409` | A different result already completed that run/stage; use a fresh run rather than changing an already accepted result. |
 | Worker cannot download the recording | Signed URL is reachable from the dev container and has not expired; re-analysis creates a fresh invocation. |
-| Marker appears at the wrong time | Copy `data.media.startTimestamp` for the previewed recording, match `videoFile` to the invocation's `media.key`, reload `.env`, and use a one-shot callback. The value is Unix seconds, not an offset or milliseconds. |
+| Marker appears at the wrong time | Copy `data.media.startTimestamp` for the queued test recording, confirm it is the only invocation in the queue, reload `.env`, and use a one-shot callback. The value is Unix seconds, not an offset or milliseconds. |
 
 Disable and save the exercise workflow when finished so new recordings no
 longer queue work for an unattended worker. Delete the exercise access token.
@@ -706,7 +650,6 @@ recording description.
 ## Delivery and retry semantics
 
 - RabbitMQ uses explicit acknowledgements with a prefetch of one
-- Preview always requeues its delivery
 - HTTP mode acknowledges only after a `2xx` callback response
 - Timeouts, redirects, authorization errors, and other non-`2xx` responses
   requeue the delivery and stop the worker
@@ -809,12 +752,11 @@ Useful references:
 - [ ] Workflow is saved and enabled for the test.
 - [ ] Dev container has been rebuilt successfully.
 - [ ] `go test ./...` passes.
-- [ ] Queue preview analyzes and requeues a real invocation.
 - [ ] Credential values are safely quoted, or supplied through a CLI-only prompt.
 - [ ] The queued test invocation is isolated; its `media.key` matches the recording used for `MARKER_START_TIMESTAMP`.
 - [ ] The timestamp was copied from `data.media.startTimestamp` in Unix seconds, and the interval fits the clip.
 - [ ] Hub token has only `workflow-runs.update`; `.env` contains the raw token.
-- [ ] The one-shot HTTP callback uses the previewed `runId` and returns `2xx`.
+- [ ] The one-shot HTTP callback uses the test `runId` noted in Hub and returns `2xx`.
 - [ ] The run's `forwarder` stage resolves in Hub.
 - [ ] A person detection creates a marker and updates the recording description.
 - [ ] A no-person result resolves the workflow without changing the recording.
