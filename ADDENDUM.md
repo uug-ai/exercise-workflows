@@ -252,6 +252,7 @@ Idempotency-Key: <runId>:<operation>
 
 | Symptom | Check |
 | --- | --- |
+| Agent is online but no recording appears in Hub | Verify the local camera preview and a playable clip under Agent **Recordings**. Confirm the [ROI is saved](README.md#configure-a-region-of-interest-roi); motion-based capture needs activity inside it, whereas continuous capture does not. Check recording conditions, cloud settings, and capture/upload errors in `docker logs --since 5m --tail 100 introduction-agent` on the Docker host. Redact credentials, tokens, and signed URLs before sharing logs. |
 | No workflow run appears | Workflow is enabled and saved; automatic start is connected; the connection selects your Agent and uses an active schedule; trigger a fresh recording or re-analysis. |
 | A run appears but nothing reaches your queue | Forwarder service, catalog operation, destination credentials, broker reachability, queue, virtual host, and TLS settings. |
 | Worker says it cannot consume `STAGE_QUEUE` | Confirm the queue exists in that virtual host and the consumer has read permission. For a new destination with declaration enabled, first trigger the forwarder's delivery as described in the README's queue preparation. |

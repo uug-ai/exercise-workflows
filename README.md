@@ -195,11 +195,44 @@ Open [http://localhost:8080](http://localhost:8080). The default local Agent
 credentials are `root` / `root`; change them before exposing the UI outside
 your machine.
 
+### Configure a region of interest (ROI)
+
+Before verifying recordings, configure an ROI in the **local Agent UI**:
+
+1. Confirm that the camera preview shows the demo stream.
+2. Open **Settings → Conditions → Region Of Interest** and wait for the camera
+   snapshot to load.
+3. Select **Rectangular box (R)** and drag a region covering the demo scene.
+   For the baseline, cover almost the whole image, starting slightly inside
+   its edges, so relevant activity is not excluded.
+4. Select **Save** in the ROI section.
+5. Reload the settings page and confirm that the saved region is still drawn
+   over the snapshot.
+
+An ROI defines where the Agent checks for motion; it is not a person-detection
+filter. The exercise's YOLO stage still analyzes the downloaded video, not
+just the Agent ROI.
+
+Keep **Continuous recording** enabled for the baseline, as configured by
+`AGENT_CAPTURE_CONTINUOUS=true` above. Continuous recording does not require
+motion inside an ROI to start a clip. If you later switch to motion-based
+recording, activity must occur inside the saved ROI to trigger detection.
+Keep other recording conditions permissive while testing.
+
+### Verify capture and upload
+
 Verify that:
 
 1. the camera preview works
-2. the Agent appears online in Hub and belongs to the site you created
-3. a recording made by the Agent is playable in Hub
+2. the ROI remains visible after reopening the Agent settings
+3. the Agent appears online in Hub and belongs to the site you created
+4. a recording made by the Agent is playable in Hub
+
+An online Agent alone does not prove that capture or upload works. If Hub shows
+no recordings, check for a playable clip in the Agent's local **Recordings**
+page, then inspect its recording conditions, cloud settings, and capture/upload
+errors. Do not assume adding an ROI fixes missing continuous recordings.
+See [Agent recording troubleshooting](ADDENDUM.md#troubleshooting).
 
 See the
 [Agent installation tutorial](https://doc.kerberos.io/tutorials/agent/install/)
@@ -548,6 +581,7 @@ Useful references:
 - [ ] Tutor-provided RabbitMQ connection details, credentials, and queue provisioning instructions are available.
 - [ ] Own site is created in the exercise organisation/project, and its Site ID is set in `AGENT_HUB_SITE`.
 - [ ] Agent camera preview works.
+- [ ] Agent ROI covers the exercise scene, is saved, and persists after reloading settings.
 - [ ] Agent is online in Hub.
 - [ ] A recording is playable in Hub.
 - [ ] Workflow connects an automatic start block to the `forwarder` block.
