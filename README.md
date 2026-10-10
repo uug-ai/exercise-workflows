@@ -329,22 +329,6 @@ recording.
 
 ![Access-token guide showing the Details, Expiry, and Permissions tabs, the single workflow-runs.update permission, and removal of the Bearer prefix for the worker](docs/images/access-token.svg)
 
-The following screenshots show the live form with example values only.
-No token was generated for the screenshots.
-
-![Hub Generate access token dialog with the Details tab showing the example name and description](docs/images/hub-access-token-details.png)
-
-*Details: both the name and description are required.*
-
-![Hub access-token Expiry tab with the 24 hours preset selected](docs/images/hub-access-token-expiry.png)
-
-*Expiry: choose a lifetime that covers your exercise, not the literal date
-shown in this screenshot.*
-
-![Hub access-token Permissions tab with only workflow-runs.update selected](docs/images/hub-access-token-permissions.png)
-
-*Permissions: exactly one assigned permission, workflow-runs.update.*
-
 The dialog's copy control includes the `Bearer ` prefix for use in an HTTP
 Authorization header. **Remove that prefix** when setting
 `WORKFLOW_BEARER_TOKEN`: the exercise worker adds it itself. In your ignored
