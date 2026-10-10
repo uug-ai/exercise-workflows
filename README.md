@@ -104,7 +104,8 @@ recording interval, and Hub callback credentials are configured.
   workflows in the organisation/project containing your Agent (see Step 0)
 - An active Hub plan assigned by your tutor
 - An Agent public access key and private key provided by your tutor in Step 0
-- An H.264 or H.265 RTSP camera stream
+- An H.264 or H.265 RTSP camera stream. For this exercise, use
+  `rtsp://fake.kerberos.io:8554/stream`.
 - A Hub deployment with the workflow designer and `forwarder` block enabled
 - A RabbitMQ destination reachable by both the Hub forwarder and your
   development container, with credentials for each and permission to use the
@@ -176,7 +177,7 @@ docker run -d --name introduction-agent --restart unless-stopped \
   -p 8080:80 \
   -e AGENT_NAME=introduction-agent \
   -e AGENT_KEY=introduction-agent-<your-name> \
-  -e AGENT_CAPTURE_IPCAMERA_RTSP='******camera/stream' \
+  -e AGENT_CAPTURE_IPCAMERA_RTSP='rtsp://fake.kerberos.io:8554/stream' \
   -e AGENT_CAPTURE_CONTINUOUS=true \
   -e AGENT_CLOUD=s3 \
   -e AGENT_HUB_URI='https://api.example.com' \
