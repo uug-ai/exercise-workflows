@@ -119,7 +119,9 @@ Runtime, and the checksum-verified YOLO11n model.
 ## 0. Create your Hub account and request a plan
 
 1. Open [app.kerberos.io](https://app.kerberos.io), create a Hub account, and
-   sign in. Complete email verification if prompted.
+   sign in. Complete email verification if prompted. Registration creates
+   your organisation and a default project; use these for the exercise.
+   No separate organisation/project assignment from the tutor is required.
 2. Contact your tutor using the email address you registered with and request
    a **valid Hub plan for the exercise** and the **RabbitMQ destination
    details** needed in Step 2. The tutor needs to identify your account; do
@@ -128,11 +130,10 @@ Runtime, and the checksum-verified YOLO11n model.
    credentials** needed to connect your Agent. Wait for the tutor to confirm
    that your plan is active and provide the credentials before continuing.
 4. Confirm that you have:
-   - the Hub API URI;
-   - the Agent public access key and private key; and
-   - the organisation/project to use for the exercise.
-5. Sign in again or refresh Hub after the tutor provisions access, and select
-   the organisation/project they specified.
+   - the Hub API URI: `https://api.cloud.kerberos.io`; and
+   - the Agent public access key and private key.
+5. Sign in again or refresh Hub after the tutor activates your plan, and
+   select your organisation and the default project created during registration.
 6. **Create your own site before connecting the Agent:**
    - Open **Sites** (`/sites`) and select **Add Site**.
    - Enter a unique name such as `Your name - exercise`, a description, an
@@ -165,7 +166,7 @@ After your tutor confirms access is ready, open **Devices** in Hub and select
 **Add Agent**. Use the tutor-provided connection details and credentials,
 together with the ID of the site you created in Step 0:
 
-- the Hub API URI;
+- the Hub API URI: `https://api.cloud.kerberos.io`;
 - the public access key;
 - the private key; and
 - the ID of your new site.
@@ -180,7 +181,7 @@ docker run -d --name introduction-agent --restart unless-stopped \
   -e AGENT_CAPTURE_IPCAMERA_RTSP='rtsp://fake.kerberos.io:8554/stream' \
   -e AGENT_CAPTURE_CONTINUOUS=true \
   -e AGENT_CLOUD=s3 \
-  -e AGENT_HUB_URI='https://api.example.com' \
+  -e AGENT_HUB_URI='https://api.cloud.kerberos.io' \
   -e AGENT_HUB_KEY='<public-access-key>' \
   -e AGENT_HUB_PRIVATE_KEY='<private-key>' \
   -e AGENT_HUB_SITE='<site-id>' \
@@ -543,7 +544,7 @@ Useful references:
 ## Completion checklist
 
 - [ ] Hub account is created and the tutor has assigned an active exercise plan.
-- [ ] Tutor-provided Agent credentials and the correct organisation/project are available.
+- [ ] Tutor-provided Agent credentials are available, and the default organisation/project created during registration is selected.
 - [ ] Tutor-provided RabbitMQ connection details, credentials, and queue provisioning instructions are available.
 - [ ] Own site is created in the exercise organisation/project, and its Site ID is set in `AGENT_HUB_SITE`.
 - [ ] Agent camera preview works.
