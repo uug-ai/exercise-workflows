@@ -31,6 +31,13 @@ For each valid invocation, the worker:
    `YOLO_CONFIDENCE`
 6. submits one of the two result forms below
 
+When `MARKER_START_TIMESTAMP` is empty, the marker interval starts at the
+Unix-seconds prefix of the Agent-generated filename in `media.key`. This is
+resolved independently for each delivery. The current invocation contract
+does not expose a structured recording timestamp. Nonstandard keys require an
+explicit `MARKER_START_TIMESTAMP` override for that recording; missing or
+invalid filename timestamps stop processing before downloading media.
+
 The temporary file is removed after processing. Signed URL credentials and
 query parameters are redacted from logs.
 
@@ -253,6 +260,7 @@ Idempotency-Key: <runId>:<operation>
 | Symptom | Check |
 | --- | --- |
 | Agent is online but no recording appears in Hub | Verify the local camera preview and a playable clip under Agent **Recordings**. Confirm the [ROI is saved](README.md#configure-a-region-of-interest-roi); motion-based capture needs activity inside it, whereas continuous capture does not. Check recording conditions, cloud settings, and capture/upload errors in `docker logs --since 5m --tail 100 introduction-agent` on the Docker host. Redact credentials, tokens, and signed URLs before sharing logs. |
+| Worker cannot resolve the recording timestamp | Leave `MARKER_START_TIMESTAMP` empty for Agent-generated keys whose filename starts with Unix seconds followed by `_`. For a nonstandard key, obtain that recording's `data.media.startTimestamp` and set it as an explicit override. Never substitute the current time. |
 | No workflow run appears | Workflow is enabled and saved; automatic start is connected; the connection selects your Agent and uses an active schedule; trigger a fresh recording or re-analysis. |
 | A run appears but nothing reaches your queue | Forwarder service, catalog operation, destination credentials, broker reachability, queue, virtual host, and TLS settings. |
 | Worker says it cannot consume `STAGE_QUEUE` | Confirm the queue exists in that virtual host and the consumer has read permission. For a new destination with declaration enabled, first trigger the forwarder's delivery as described in the README's queue preparation. |
@@ -260,7 +268,7 @@ Idempotency-Key: <runId>:<operation>
 | Callback returns `401` or `403` | Raw token has no `Bearer ` prefix, is unexpired, belongs to the correct tenant, and has exactly `workflow-runs.update`. |
 | Callback returns `409` | A different result already completed that run/stage; use a fresh run rather than changing an already accepted result. |
 | Worker cannot download the recording | Signed URL is reachable from the dev container and has not expired; re-analysis creates a fresh invocation. |
-| Marker appears at the wrong time | Copy `data.media.startTimestamp` for the queued test recording, confirm it is the only invocation in the queue, reload `.env`, and use a one-shot callback. The value is Unix seconds, not an offset or milliseconds. |
+| Marker appears at the wrong time | Compare the filename timestamp in `media.key` with the recording's `data.media.startTimestamp`. Clear an old `MARKER_START_TIMESTAMP` override, or correct it for the isolated test recording. Restart the worker after changing `.env`. The value is Unix seconds, not an offset or milliseconds. |
 
 ## Project layout
 

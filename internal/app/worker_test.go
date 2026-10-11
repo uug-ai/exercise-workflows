@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	ingest "github.com/uug-ai/ingest/pkg/ingest"
 	"github.com/uug-ai/models/pkg/models"
 )
 
@@ -137,6 +138,71 @@ func TestDeliveryWithoutPersonPostsRoutingResult(t *testing.T) {
 	}
 }
 
+func TestDeliveryUsesEachRecordingTimestamp(t *testing.T) {
+	markers := make(chan models.Marker, 2)
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method == http.MethodGet {
+			_, _ = writer.Write([]byte("video"))
+			return
+		}
+		var result models.WorkflowResult
+		if err := json.NewDecoder(request.Body).Decode(&result); err != nil {
+			t.Error(err)
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		var envelope struct {
+			Blocks []ingest.Block `json:"blocks"`
+		}
+		if err := json.Unmarshal(result.Payload, &envelope); err != nil || len(envelope.Blocks) != 2 {
+			t.Errorf("unexpected callback payload: %s", result.Payload)
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		var marker models.Marker
+		if err := json.Unmarshal(envelope.Blocks[0].Data, &marker); err != nil {
+			t.Error(err)
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		markers <- marker
+		writer.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	settings := config{operation: "forwarder", mode: "http", token: "test-token", duration: 30, detector: detectedPerson()}
+	ack := &acknowledgements{}
+	for _, key := range []string{"1700000000_recording.mp4", "1700000060_recording.mp4"} {
+		body := strings.Replace(sampleInvocation, "recording.mp4", key, 1)
+		body = strings.Replace(body, "https://api.example.com", server.URL, 1)
+		body = strings.Replace(body, "https://example.com?secret=SECRET", server.URL+"/recording.mp4", 1)
+		outcome, err := handleDelivery(context.Background(), settings, amqp.Delivery{Body: []byte(body), Acknowledger: ack}, io.Discard)
+		if err != nil || outcome != deliverySubmitted {
+			t.Fatalf("outcome = %v, error = %v", outcome, err)
+		}
+	}
+	if len(markers) != 2 {
+		t.Fatalf("received %d markers, want 2", len(markers))
+	}
+	first, second := <-markers, <-markers
+	if first.StartTimestamp != 1700000000 || second.StartTimestamp != 1700000060 ||
+		first.EndTimestamp != 1700000030 || second.EndTimestamp != 1700000090 ||
+		ack.acks != 2 || ack.nacks != 0 {
+		t.Fatalf("recording timestamps or acknowledgements incorrect: markers=%+v,%+v ack=%+v", first, second, ack)
+	}
+	if settings.start != 0 {
+		t.Fatal("recording timestamp changed the process-wide override")
+	}
+}
+
+func TestDeliveryRequeuesMissingRecordingTimestamp(t *testing.T) {
+	settings := config{operation: "forwarder", mode: "http", token: "test-token", duration: 30, detector: detectedPerson()}
+	ack := &acknowledgements{}
+	_, err := handleDelivery(context.Background(), settings, amqp.Delivery{Body: []byte(sampleInvocation), Acknowledger: ack}, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "media.key") || ack.acks != 0 || ack.nacks != 1 || !ack.requeue {
+		t.Fatalf("missing timestamp was not reported and requeued: error=%v ack=%+v", err, ack)
+	}
+}
+
 func TestCallbackLogFieldsIncludeDestination(t *testing.T) {
 	callback := models.WorkflowCallback{URL: "https://api.example.com/workflows/runs/example-run"}
 	payload := []byte(`{"schema":"uug.ai/workflow-result/v1","stage":{"operation":"forwarder"},"payload":{"blocks":[]}}`)
@@ -243,5 +309,48 @@ func TestBrokerConfiguration(t *testing.T) {
 	t.Setenv("WORKFLOW_BEARER_TOKEN", "")
 	if _, err := loadConfig(false); err != nil {
 		t.Fatalf("bypass mode required callback configuration: %v", err)
+	}
+
+	t.Setenv("RESULT_MODE", "http")
+	t.Setenv("WORKFLOW_BEARER_TOKEN", "test-token")
+	for _, test := range []struct {
+		name, start, duration string
+		wantStart             int64
+		wantDuration          int64
+		wantError             string
+	}{
+		{"empty override", "", "30", 0, 30, ""},
+		{"default duration", "", "", 0, 30, ""},
+		{"explicit override", "1700000000", "30", 1700000000, 30, ""},
+		{"minimum duration", "", "1", 0, 1, ""},
+		{"maximum duration", "", "3600", 0, 3600, ""},
+		{"zero override", "0", "30", 0, 0, "MARKER_START_TIMESTAMP"},
+		{"negative override", "-1", "30", 0, 0, "MARKER_START_TIMESTAMP"},
+		{"invalid override", "invalid", "30", 0, 0, "MARKER_START_TIMESTAMP"},
+		{"milliseconds override", "1700000000000", "30", 0, 0, "MARKER_START_TIMESTAMP"},
+		{"overflow override", "9223372036854775808", "30", 0, 0, "MARKER_START_TIMESTAMP"},
+		{"interval overflow", "253402300799", "30", 0, 0, "MARKER_START_TIMESTAMP"},
+		{"zero duration", "", "0", 0, 0, "MARKER_DURATION_SECONDS"},
+		{"oversized duration", "", "3601", 0, 0, "MARKER_DURATION_SECONDS"},
+		{"invalid duration", "", "invalid", 0, 0, "MARKER_DURATION_SECONDS"},
+		{"fractional duration", "", "1.5", 0, 0, "MARKER_DURATION_SECONDS"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Setenv("MARKER_START_TIMESTAMP", test.start)
+			t.Setenv("MARKER_DURATION_SECONDS", test.duration)
+			settings, err := loadConfig(false)
+			if test.wantError != "" {
+				if err == nil || !strings.Contains(err.Error(), test.wantError) {
+					t.Fatalf("error = %v, want %s", err, test.wantError)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if settings.start != test.wantStart || settings.duration != test.wantDuration {
+				t.Fatalf("start = %d, duration = %d", settings.start, settings.duration)
+			}
+		})
 	}
 }

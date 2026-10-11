@@ -39,10 +39,16 @@ func loadConfig(offline bool) (config, error) {
 		token:     os.Getenv("WORKFLOW_BEARER_TOKEN"),
 		queue:     os.Getenv("STAGE_QUEUE"),
 	}
-	settings.start, _ = strconv.ParseInt(os.Getenv("MARKER_START_TIMESTAMP"), 10, 64)
-	settings.duration, _ = strconv.ParseInt(envOr("MARKER_DURATION_SECONDS", "30"), 10, 64)
-	if settings.start < 1 || settings.start > 253402300799-settings.duration || settings.duration < 1 || settings.duration > 3600 {
-		return settings, errors.New("set MARKER_START_TIMESTAMP to the recording's Unix seconds and MARKER_DURATION_SECONDS to 1..3600")
+	var err error
+	settings.duration, err = strconv.ParseInt(envOr("MARKER_DURATION_SECONDS", "30"), 10, 64)
+	if err != nil || settings.duration < 1 || settings.duration > 3600 {
+		return settings, errors.New("set MARKER_DURATION_SECONDS to an integer of 1..3600")
+	}
+	if start := os.Getenv("MARKER_START_TIMESTAMP"); start != "" {
+		settings.start, err = strconv.ParseInt(start, 10, 64)
+		if err != nil || settings.start < 1 || settings.start > 253402300799-settings.duration {
+			return settings, errors.New("MARKER_START_TIMESTAMP must be valid Unix seconds, or empty to use the recording timestamp")
+		}
 	}
 	detector, err := newYOLOPersonDetector()
 	if err != nil {

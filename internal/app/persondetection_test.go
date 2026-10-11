@@ -114,6 +114,69 @@ func TestHandleInvocation(t *testing.T) {
 	}
 }
 
+func TestHandleInvocationRecordingTimestamp(t *testing.T) {
+	server := newMediaServer(t, []byte("video"))
+	for _, test := range []struct {
+		name, key string
+		override  int64
+		duration  int64
+		wantStart int64
+		wantError bool
+	}{
+		{"recording start", "1700000000_3-756_camera_0-0-0-0_0_30000.mp4", 0, 30, 1700000000, false},
+		{"different recording", "1700000060_3-756_camera_0-0-0-0_0_30000.mp4", 0, 30, 1700000060, false},
+		{"nested key", "owner/site/1700000000_3-756_camera_0-0-0-0_0_30000.mp4", 0, 30, 1700000000, false},
+		{"override takes precedence", "1700000000_recording.mp4", 1700000100, 30, 1700000100, false},
+		{"override supports nonstandard key", "recording.mp4", 1700000100, 30, 1700000100, false},
+		{"missing timestamp", "recording.mp4", 0, 30, 0, true},
+		{"missing separator", "1700000000.mp4", 0, 30, 0, true},
+		{"empty filename", "1700000000_", 0, 30, 0, true},
+		{"zero timestamp", "0_recording.mp4", 0, 30, 0, true},
+		{"negative timestamp", "-1_recording.mp4", 0, 30, 0, true},
+		{"fractional timestamp", "1700000000.5_recording.mp4", 0, 30, 0, true},
+		{"milliseconds", "1700000000000_recording.mp4", 0, 30, 0, true},
+		{"integer overflow", "9223372036854775808_recording.mp4", 0, 30, 0, true},
+		{"interval overflow", "253402300799_recording.mp4", 0, 30, 0, true},
+		{"invalid duration", "1700000000_recording.mp4", 0, 0, 0, true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			body := strings.Replace(sampleInvocation, "recording.mp4", test.key, 1)
+			body = strings.Replace(body, "https://example.com?secret=SECRET", server.URL, 1)
+			detector := detectedPerson()
+			invocation, err := handleInvocation(context.Background(), []byte(body), "forwarder", test.override, test.duration, detector)
+			if test.wantError {
+				if err == nil {
+					t.Fatal("accepted an invalid recording timestamp or interval")
+				}
+				if len(detector.media) != 0 {
+					t.Fatal("processed media before validating its timestamp")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var envelope struct {
+				Blocks []ingest.Block `json:"blocks"`
+			}
+			if err := json.Unmarshal(invocation.result.Payload, &envelope); err != nil {
+				t.Fatal(err)
+			}
+			if len(envelope.Blocks) != 2 {
+				t.Fatalf("unexpected blocks: %+v", envelope)
+			}
+			var marker models.Marker
+			if err := json.Unmarshal(envelope.Blocks[0].Data, &marker); err != nil {
+				t.Fatal(err)
+			}
+			if marker.StartTimestamp != test.wantStart || marker.EndTimestamp != test.wantStart+test.duration ||
+				marker.Duration != test.duration || !reflect.DeepEqual(marker.MediaKeys, []string{test.key}) {
+				t.Fatalf("marker does not match its recording: %+v", marker)
+			}
+		})
+	}
+}
+
 func TestHandleInvocationRejectsInvalidInput(t *testing.T) {
 	for _, body := range []string{
 		"broken",
@@ -210,8 +273,9 @@ func TestHandleInvocationAllowsMissingCallback(t *testing.T) {
 func TestHandleInvocationReturnsRoutingResultWithoutPerson(t *testing.T) {
 	server := newMediaServer(t, []byte("video"))
 	body := strings.Replace(sampleInvocation, "https://example.com?secret=SECRET", server.URL, 1)
+	body = strings.Replace(body, "recording.mp4", "1700000000_recording.mp4", 1)
 	detector := &stubPersonDetector{detection: personDetection{FramesAnalyzed: 5}}
-	invocation, err := handleInvocation(context.Background(), []byte(body), "forwarder", 1700000000, 30, detector)
+	invocation, err := handleInvocation(context.Background(), []byte(body), "forwarder", 0, 30, detector)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,7 +8,10 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -64,6 +67,13 @@ func handleInvocation(ctx context.Context, body []byte, stageOperation string, s
 	if callback != nil && callback.URL != "" {
 		if err := validateCallback(callback, runID); err != nil {
 			return handledInvocation{}, err
+		}
+	}
+	if start == 0 {
+		timestamp, filename, found := strings.Cut(path.Base(invocation.Media.Key), "_")
+		start, err = strconv.ParseInt(timestamp, 10, 64)
+		if !found || filename == "" || err != nil || start < 1 || start > 253402300799 {
+			return handledInvocation{}, errors.New("media.key must start its filename with the recording's Unix-seconds timestamp followed by '_'; set MARKER_START_TIMESTAMP explicitly for nonstandard keys")
 		}
 	}
 	if start < 1 || start > 253402300799 || duration < 1 || duration > 3600 || start > 253402300799-duration {

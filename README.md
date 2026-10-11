@@ -162,14 +162,11 @@ external destination automatically.
 
 ## 1. Connect an Agent
 
-After your tutor confirms access is ready, open **Devices** in Hub and select
-**Add Agent**. Use the tutor-provided connection details and credentials,
-together with the ID of the site you created in Step 0:
-
-- the Hub API URI: `https://api.cloud.kerberos.io`;
-- the public access key;
-- the private key; and
-- the ID of your new site.
+After your tutor confirms access is ready, start the Agent locally, then
+configure its Hub connection through the **Agent UI**. In Hub,
+**Devices → Add Agent** provides connection guidance. Keep the keys and the
+Site ID from Step 0 ready for the UI setup below; do not pass Hub credentials
+through Docker environment variables.
 
 Start an Agent after replacing the placeholders:
 
@@ -180,20 +177,45 @@ docker run -d --name introduction-agent --restart unless-stopped \
   -e AGENT_KEY=introduction-agent-<your-name> \
   -e AGENT_CAPTURE_IPCAMERA_RTSP='rtsp://fake.kerberos.io:8554/stream' \
   -e AGENT_CAPTURE_CONTINUOUS=true \
-  -e AGENT_CLOUD=s3 \
-  -e AGENT_HUB_URI='https://api.cloud.kerberos.io' \
-  -e AGENT_HUB_KEY='<public-access-key>' \
-  -e AGENT_HUB_PRIVATE_KEY='<private-key>' \
-  -e AGENT_HUB_SITE='<site-id>' \
   kerberos/agent:latest
 ```
 
-Replace `<site-id>` with the ID copied from your own site's detail page.
-Use a unique `AGENT_KEY`; Hub uses it as the stable device identity.
+Replace `<your-name>` to give the Agent a unique `AGENT_KEY`; Hub uses it as
+the stable device identity. This command configures the demo camera and
+continuous capture, but does not yet connect the Agent to Hub.
 
 Open [http://localhost:8080](http://localhost:8080). The default local Agent
 credentials are `root` / `root`; change them before exposing the UI outside
 your machine.
+
+### Connect to Hub through the Agent UI
+
+Explore the Agent's **Dashboard**, **Recordings**, and **Settings** pages
+before configuring cloud persistence. Enter the Hub keys only in the Agent
+frontend, not in the Docker command or the worker's `.env` file.
+
+1. Open **Settings → Persistence** in the local Agent UI.
+2. In the **Hub** section, enter:
+
+   | Field | Value |
+   | --- | --- |
+   | **Hub API URL** | `https://api.cloud.kerberos.io` |
+   | **Public key** | Your tutor-provided Agent public access key |
+   | **Private key** | Your tutor-provided Agent private key |
+   | **Site** | The Site ID copied from your own site's Overview in Step 0, not its name or URL |
+
+3. Select **Verify Connection** in the **Hub** section. Confirm it succeeds,
+   then select that section's **Save**. If verification fails, resolve the
+   reported error before continuing.
+4. In the **Persistence** section on the same page, open **Select a persistence**
+   and choose **Kerberos Hub**. Confirm **Region** matches a media storage
+   region listed in **Hub → Plans & integrations**.
+5. Select **Verify Connection** in the **Persistence** section, confirm it
+   succeeds, and select that section's **Save** as well. Both the Hub connection
+   and the recording persistence settings must be saved.
+6. Reload **Settings → Persistence** and confirm that the Hub API URL, Site ID,
+   selected provider, and region persist. Keep keys masked and out of
+   screenshots, logs, and Git.
 
 ### Configure a region of interest (ROI)
 
@@ -225,8 +247,10 @@ Verify that:
 
 1. the camera preview works
 2. the ROI remains visible after reopening the Agent settings
-3. the Agent appears online in Hub and belongs to the site you created
-4. a recording made by the Agent is playable in Hub
+3. the Hub connection and Kerberos Hub persistence settings are saved in the
+   Agent UI and both connection checks succeed
+4. the Agent appears online in Hub and belongs to the site you created
+5. a recording made by the Agent is playable in Hub
 
 An online Agent alone does not prove that capture or upload works. If Hub shows
 no recordings, check for a playable clip in the Agent's local **Recordings**
@@ -428,7 +452,7 @@ instead of changing its value.
 | `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD` | Broker credentials |
 | `RABBITMQ_VHOST` | Assigned virtual host, commonly `/` |
 | `STAGE_QUEUE` | Existing queue that receives workflow invocations |
-| `MARKER_START_TIMESTAMP` | Required recording start in Unix seconds; obtain it using the procedure below |
+| `MARKER_START_TIMESTAMP` | Optional Unix-seconds override; leave empty to use each recording's timestamp from the Agent filename in `media.key` |
 | `MARKER_DURATION_SECONDS` | Marker interval in seconds; `1..3600`, default `30` |
 | `RESULT_MODE` | Set to `http` to submit the result to Hub |
 | `WORKFLOW_BEARER_TOKEN` | Raw Hub token with `workflow-runs.update`, without the `Bearer ` prefix; required in HTTP mode |
@@ -436,7 +460,18 @@ instead of changing its value.
 Leave the other example settings unchanged for the baseline. Their meanings
 are documented in the [addendum](ADDENDUM.md#advanced-stage-settings).
 
-### Obtain the recording timestamp
+### Verify the recording timestamp and marker interval
+
+Leave `MARKER_START_TIMESTAMP` empty for the baseline. The worker resolves the
+start separately for each invocation from the Unix-seconds prefix of the
+Agent-generated filename in `media.key`, including keys with a directory
+prefix. For example, `owner/1700000000_3-756_camera_0-0-0-0_0_30000.mp4`
+starts at `1700000000`.
+
+The current invocation contract carries `media.key` and `media.signedUrl`,
+but no structured `startTimestamp` field. A nonstandard filename without a
+valid timestamp prefix requires an explicit override; the worker reports an
+error instead of using the current time.
 
 Use one known, playable recording from your exercise Agent:
 
@@ -444,28 +479,29 @@ Use one known, playable recording from your exercise Agent:
 2. Open your browser's developer tools, select **Network**, and filter to
    **Fetch/XHR**. Reload the recording detail page if necessary.
 3. Select the successful `GET /media/<recording-id>` request. In **Response**,
-   expand `data.media` and copy **`startTimestamp`**. It is already Unix
-   **seconds**; do not multiply it by 1000. Note **`videoFile`** too so you can
-   match the recording to the invocation's `media.key`.
-4. Set `MARKER_START_TIMESTAMP` in `.env` to that integer. Set
-   `MARKER_DURATION_SECONDS` to a whole-second interval within the clip
-   (`1..3600`); shorten the default `30` for shorter clips.
+   expand `data.media` and check **`startTimestamp`** against the timestamp
+   prefix in **`videoFile`**. It is already Unix **seconds**; do not multiply
+   it by 1000. Note `videoFile` so you can match the recording to the
+   invocation's `media.key`.
+4. Set `MARKER_DURATION_SECONDS` to a whole-second interval within the clip
+   (`1..3600`); shorten the default `30` for shorter clips. Leave
+   `MARKER_START_TIMESTAMP` empty unless you need the override described below.
 
 Use your existing Hub browser login to inspect this response; the worker's
 callback token does not need additional read permissions. Do not copy or
 share request headers or signed URLs from developer tools.
 
-The example file deliberately leaves the timestamp blank so startup fails
-until you supply it. Do not use the response envelope's `metadata.timestamp`,
-the workflow run's **Started** time, the current time, or a synthetic example
+For a nonstandard key, set `MARKER_START_TIMESTAMP` in `.env` to that exact
+recording's `data.media.startTimestamp`. An explicit value overrides the
+filename timestamp for every delivery in that worker process, so use it only
+with an isolated matching recording and clear it before processing other
+recordings. Do not use the response envelope's `metadata.timestamp`, the
+workflow run's **Started** time, the current time, or a synthetic example
 timestamp for a live callback.
 
-This timestamp is one value per worker process, not derived automatically
-from each invocation. It is suitable for the one-recording exercise, not a
-mixed-recording stream. In Step 6, queue one test recording and **set the
-timestamp for that exact recording before starting the HTTP callback worker**.
-Reload the environment after changing it. The example does not yet derive
-entry and exit timestamps from a person track.
+Restart the worker after changing `.env` so the new values are loaded. The
+marker begins at the recording start, not the first detection; this example
+does not yet derive entry and exit timestamps from a person track.
 
 ## 6. Run the stage
 
@@ -493,8 +529,9 @@ has arrived. If you started the example Agent in Step 1, run
 container temporarily. Do not stop an unrelated or production Agent.
 
 Open your workflow's **View runs** in Hub and find the run for the test clip.
-Note its **Run ID**. Open that recording in Hub and use the timestamp procedure
-in Step 5 to set `MARKER_START_TIMESTAMP` for it.
+Note its **Run ID**. Open that recording in Hub and verify its filename
+timestamp and marker interval using Step 5. Keep `MARKER_START_TIMESTAMP` empty
+for an Agent-generated key.
 
 Before starting the worker, ask your tutor to confirm that the dedicated queue
 contains only this test invocation and that no other consumer is using it.
@@ -505,8 +542,9 @@ Do not trigger another recording merely to start the worker.
 ### HTTP callback
 
 Before starting, confirm the queue contains only that test invocation, its
-signed media URL is still valid, and `MARKER_START_TIMESTAMP` matches its
-recording. Set `WORKFLOW_BEARER_TOKEN` to the raw token from Step 3 and
+signed media URL is still valid, and its filename timestamp matches the
+recording. If using `MARKER_START_TIMESTAMP`, confirm the override matches it
+instead. Set `WORKFLOW_BEARER_TOKEN` to the raw token from Step 3 and
 `RESULT_MODE=http` in `.env`.
 
 In VS Code, open **Run and Debug**, select **Stage: HTTP callback**, and start
@@ -531,7 +569,7 @@ does not prove the marker timestamp was correct.
 3. Open the recording in Hub. For a clip containing a person, verify that the
    `person detected` marker appears at your configured interval and that the
    recording description contains the YOLO detection summary.
-4. Repeat queue preparation, timestamp lookup, and one-shot callback
+4. Repeat queue preparation, timestamp verification, and one-shot callback
    with a recording without a person. To resume the example Agent, run
    `docker start introduction-agent` on the Docker host, then pause it again
    after the next test clip. The run should finish, but no marker or
@@ -539,8 +577,8 @@ does not prove the marker timestamp was correct.
 
 If the signed media URL or callback run is no longer valid, arrange a fresh
 test run and repeat queue isolation and timestamp verification before
-posting. Do not process different recordings continuously with one fixed
-`MARKER_START_TIMESTAMP`.
+posting. Leave `MARKER_START_TIMESTAMP` empty so different recordings use their
+own timestamps; do not reuse a fixed override for unrelated recordings.
 
 If a step fails, consult the [troubleshooting reference](ADDENDUM.md#troubleshooting)
 and discuss the evidence with your tutor before retrying.
@@ -579,7 +617,8 @@ Useful references:
 - [ ] Hub account is created and the tutor has assigned an active exercise plan.
 - [ ] Tutor-provided Agent credentials are available, and the default organisation/project created during registration is selected.
 - [ ] Tutor-provided RabbitMQ connection details, credentials, and queue provisioning instructions are available.
-- [ ] Own site is created in the exercise organisation/project, and its Site ID is set in `AGENT_HUB_SITE`.
+- [ ] Own site is created in the exercise organisation/project, and its Site ID is entered in the Agent UI's Hub settings.
+- [ ] Hub API URL, Agent keys, and Kerberos Hub persistence are configured and saved through **Settings → Persistence**; both connection checks succeed.
 - [ ] Agent camera preview works.
 - [ ] Agent ROI covers the exercise scene, is saved, and persists after reloading settings.
 - [ ] Agent is online in Hub.
@@ -591,8 +630,9 @@ Useful references:
 - [ ] Workflow is saved and enabled for the test.
 - [ ] Dev container has been rebuilt successfully.
 - [ ] Credential values are safely quoted, or supplied through a CLI-only prompt.
-- [ ] The queued test invocation is isolated; its `media.key` matches the recording used for `MARKER_START_TIMESTAMP`.
-- [ ] The timestamp was copied from `data.media.startTimestamp` in Unix seconds, and the interval fits the clip.
+- [ ] The queued test invocation is isolated; its `media.key` matches the test recording's `videoFile`.
+- [ ] `MARKER_START_TIMESTAMP` is empty for automatic per-recording timestamps, or its explicit override matches the test recording.
+- [ ] The resolved timestamp matches `data.media.startTimestamp` in Unix seconds, and the interval fits the clip.
 - [ ] Hub token has only `workflow-runs.update`; `.env` contains the raw token.
 - [ ] The one-shot HTTP callback uses the test `runId` noted in Hub and returns `2xx`.
 - [ ] The run's `forwarder` stage resolves in Hub.
