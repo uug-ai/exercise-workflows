@@ -51,6 +51,18 @@
       "mode": "auto",
       "program": "${workspaceFolder}",
       "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "RESULT_MODE": "http"
+      }
+    },
+    {
+      "name": "Stage: HTTP callback (one-shot)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}",
       "args": ["-once"],
       "envFile": "${workspaceFolder}/.env",
       "env": {

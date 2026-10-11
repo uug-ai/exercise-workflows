@@ -547,8 +547,8 @@ recording. If using `MARKER_START_TIMESTAMP`, confirm the override matches it
 instead. Set `WORKFLOW_BEARER_TOKEN` to the raw token from Step 3 and
 `RESULT_MODE=http` in `.env`.
 
-In VS Code, open **Run and Debug**, select **Stage: HTTP callback**, and start
-it. This profile is defined in [.vscode/launch.json](.vscode/launch.json); it
+In VS Code, open **Run and Debug**, select **Stage: HTTP callback (one-shot)**,
+and start it. This profile is defined in [.vscode/launch.json](.vscode/launch.json); it
 sets `RESULT_MODE=http` and `-once`, then exits after one acknowledged delivery.
 The profile reads `.env` afresh when you start it. The
 [command-line equivalent](ADDENDUM.md#command-line-http-callback) is optional.
@@ -558,6 +558,19 @@ and submits its analysis result to Hub. Confirm the logged `runId` matches the
 run you noted in Hub, the logged `media.key` matches the recording's `videoFile`,
 and the callback succeeds before moving to Hub verification. A `2xx` alone
 does not prove the marker timestamp was correct.
+
+### Continuous HTTP callbacks
+
+For ongoing processing on your dedicated exercise queue, select **Stage: HTTP
+callback** instead. It sets `RESULT_MODE=http` without `-once`, so after each
+successful callback and acknowledgement the worker waits for another invocation.
+Leave `MARKER_START_TIMESTAMP` empty so every recording uses its own timestamp,
+and choose a marker duration that fits the recordings being processed.
+
+Use VS Code's **Stop** button to stop the worker. Processing errors or a closed
+RabbitMQ connection also stop it; investigate the logged error before restarting.
+This profile does not automatically reconnect. Keep the one-shot profile for
+the isolated baseline checks below.
 
 ## 7. Verify the result in Hub
 

@@ -226,6 +226,12 @@ set +a
 go run . -once
 ```
 
+For continuous processing on your dedicated exercise queue, use `go run .`
+without `-once` after loading the environment. Leave `MARKER_START_TIMESTAMP`
+empty for per-recording timestamps. The worker waits for further invocations
+after each successful callback; Ctrl+C, a processing error, or a closed RabbitMQ
+connection stops it. It does not automatically reconnect.
+
 The VS Code HTTP callback profile reads environment-file values; these CLI
 commands **execute the file as shell input**. With single quotes, dollar signs,
 spaces, and `#` remain literal in both paths. Keep the shared file to
