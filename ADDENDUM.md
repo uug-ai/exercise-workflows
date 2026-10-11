@@ -220,7 +220,7 @@ environment.
 
 ## Command-line HTTP callback
 
-First complete the [queue and recording preparation](README.md#6-run-the-stage).
+First complete the [queue and recording preparation](README.md#7-run-the-stage).
 Run commands from the repository root inside the development container.
 Set `RESULT_MODE=http` in `.env`, then load it and run one delivery:
 

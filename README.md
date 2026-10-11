@@ -101,41 +101,38 @@ recording interval, and Hub callback credentials are configured.
 - Docker
 - VS Code with the Dev Containers extension
 - A Hub owner account for creating an access token, and permission to create
-  workflows in the organisation/project containing your Agent (see Step 0)
+  workflows in the organisation/project containing your Agent (see Step 1)
 - An active Hub plan assigned by your tutor
-- An Agent public access key and private key provided by your tutor in Step 0
+- An Agent public access key and private key provided by your tutor in Step 1
 - An H.264 or H.265 RTSP camera stream. For this exercise, use
   `rtsp://fake.kerberos.io:8554/stream`.
 - A Hub deployment with the workflow designer and `forwarder` block enabled
 - A RabbitMQ destination reachable by both the Hub forwarder and your
   development container, with credentials for each and permission to use the
-  learner-specific destination queues described in Step 2
+  learner-specific destination queues described in Step 3
 - A publicly reachable HTTPS Hub API configured as the forwarder's callback base URL
-- A Hub token with the `workflow-runs.update` scope (created in Step 3)
+- A Hub token with the `workflow-runs.update` scope (created in Step 4)
 
 The dev container supports `amd64` and `arm64`. It installs Go, OpenCV, ONNX
 Runtime, and the checksum-verified YOLO11n model.
 
-### Tutor handoff
+## 0. Join the Augment Vision Slack
 
-Some required information is intentionally not stored in this repository.
-Before continuing to Step 1, stop and contact your tutor through the approved
-course channel if you are missing any of the following:
+1. Open [join.uug.ai](https://join.uug.ai) and join the Augment Vision Slack
+   workspace. If you are already a member, continue with your existing account.
+2. Open the **#general** channel and post a short message saying that you want
+   to start the Augment Vision workflow exercise and need the tutor handoff.
+   Do not post credentials, tokens, passwords, private keys, or account details
+   in the channel.
+3. Wait for an Augment Vision team member or tutor to contact you in a direct
+   message. Continue the account-identification and access conversation in that
+   DM. Secrets must still be sent only through the private method approved by
+   your tutor.
 
-- confirmation that your Hub plan is active;
-- your Agent public access key and private key;
-- the RabbitMQ host, port, virtual host, TLS mode, username, and password;
-- confirmation that the RabbitMQ account may declare, publish to, and consume
-  from your learner-specific queues; or
-- access to the workflow designer and `forwarder` block.
+The public channel message is only a request for contact. The team uses the DM
+to identify you and coordinate the missing exercise information.
 
-Include the email address used for your Hub account so the tutor can identify
-it. Never send your Hub password, access token, Agent private key, or RabbitMQ
-password in an unapproved channel. Wait for the missing information or access
-to be confirmed instead of guessing values or copying another learner's
-configuration.
-
-## 0. Create your Hub account and request a plan
+## 1. Create your Hub account and request a plan
 
 1. Open [app.kerberos.io](https://app.kerberos.io), create a Hub account, and
    sign in. Complete email verification if prompted. Registration creates
@@ -143,7 +140,7 @@ configuration.
    No separate organisation/project assignment from the tutor is required.
 2. Contact your tutor using the email address you registered with and request
    a **valid Hub plan for the exercise** and the **RabbitMQ destination
-   details** needed in Step 2. The tutor needs to identify your account; do
+   details** needed in Step 3. The tutor needs to identify your account; do
    not send your account password.
 3. The tutor will **assign the plan to your account** and **generate the
    credentials** needed to connect your Agent. Wait for the tutor to confirm
@@ -166,25 +163,44 @@ configuration.
 
 If **Add Site** is unavailable, ask your tutor to confirm your owner/admin
 permissions in the selected organisation/project. The site is created by you,
-not assigned by the tutor; you will use its ID in Step 1.
+not assigned by the tutor; you will use its ID in Step 2.
 
 **Creating an account alone is not enough to start the exercise.** If the plan
-or credentials are missing, contact your tutor before proceeding to Step 1.
+or credentials are missing, contact your tutor before proceeding to Step 2.
 Receive credentials through the tutor's approved private channel, and keep
 them out of Git, screenshots, and logs.
 
 The Agent keys are separate from your Hub account password, the RabbitMQ
-credentials used in Step 2, and the scoped callback token you create yourself
-in Step 3. Obtain the RabbitMQ destination details from your tutor before
+credentials used in Step 3, and the scoped callback token you create yourself
+in Step 4. Obtain the RabbitMQ destination details from your tutor before
 configuring the forwarder; assigning a Hub plan does not configure that
 external destination automatically.
 
-## 1. Connect an Agent
+### Tutor handoff
+
+Some required information is intentionally not stored in this repository.
+Before continuing to Step 2, return to your tutor DM if you are missing any of
+the following:
+
+- confirmation that your Hub plan is active;
+- your Agent public access key and private key;
+- the RabbitMQ host, port, virtual host, TLS mode, username, and password;
+- confirmation that the RabbitMQ account may declare, publish to, and consume
+  from your learner-specific queues; or
+- access to the workflow designer and `forwarder` block.
+
+Provide the email address used for your Hub account in the DM so the tutor can
+identify it. Never send your Hub password, access token, Agent private key, or
+RabbitMQ password in **#general**. Wait for the missing information or access
+to be confirmed instead of guessing values or copying another learner's
+configuration.
+
+## 2. Connect an Agent
 
 After your tutor confirms access is ready, start the Agent locally, then
 configure its Hub connection through the **Agent UI**. In Hub,
 **Devices → Add Agent** provides connection guidance. Keep the keys and the
-Site ID from Step 0 ready for the UI setup below; do not pass Hub credentials
+Site ID from Step 1 ready for the UI setup below; do not pass Hub credentials
 through Docker environment variables.
 
 Start an Agent after replacing the placeholders:
@@ -221,7 +237,7 @@ frontend, not in the Docker command or the worker's `.env` file.
    | **Hub API URL** | `https://api.cloud.kerberos.io` |
    | **Public key** | Your tutor-provided Agent public access key |
    | **Private key** | Your tutor-provided Agent private key |
-   | **Site** | The Site ID copied from your own site's Overview in Step 0, not its name or URL |
+   | **Site** | The Site ID copied from your own site's Overview in Step 1, not its name or URL |
 
 3. Select **Verify Connection** in the **Hub** section. Confirm it succeeds,
    then select that section's **Save**. If verification fails, resolve the
@@ -283,7 +299,7 @@ and
 [camera connection tutorial](https://doc.kerberos.io/tutorials/agent/connect-any-camera/)
 for additional setup options.
 
-## 2. Design the workflow in Hub
+## 3. Design the workflow in Hub
 
 ### Create and connect the blocks
 
@@ -391,13 +407,13 @@ certificate validation.
 Select **Create workflow** to save the disabled draft. No downstream block is
 needed: returning the result to Hub completes this single-stage workflow.
 Enable it and select **Save changes** only when the worker is configured and
-you are ready to test in Step 6.
+you are ready to test in Step 7.
 
 If the block is missing or your workflow is read-only, ask your tutor before
 continuing. Deployment and broker details are in the
 [addendum](ADDENDUM.md#forwarder-configuration-details).
 
-## 3. Create the Hub access token
+## 4. Create the Hub access token
 
 The callback token is separate from your Agent keys and RabbitMQ credentials.
 Create it for the owner whose organisation/project contains the workflow and
@@ -437,7 +453,7 @@ run being completed. Do not put it in the workflow settings, commit it, or
 include it in screenshots. Delete the exercise token from **Access tokens**
 when finished; if it is exposed, revoke or rotate it before continuing.
 
-## 4. Open the development environment
+## 5. Open the development environment
 
 Open this repository as the VS Code folder and run:
 
@@ -451,7 +467,7 @@ exercise.
 The container does not start an Agent, RabbitMQ, or a background worker. Run
 the Agent on the Docker host and start the worker explicitly.
 
-## 5. Configure the stage
+## 6. Configure the stage
 
 Copy the example environment file:
 
@@ -536,11 +552,11 @@ Restart the worker after changing `.env` so the new values are loaded. The
 marker begins at the recording start, not the first detection; this example
 does not yet derive entry and exit timestamps from a person track.
 
-## 6. Run the stage
+## 7. Run the stage
 
 ### Prepare the destination queue
 
-Use the unique `${username}-forward-queue` configured in Step 2. This lets
+Use the unique `${username}-forward-queue` configured in Step 3. This lets
 multiple learners run concurrently without consuming each other's messages.
 Keep the workflow disabled until configuration and the callback token are ready.
 Choose the startup order that matches your broker:
@@ -558,13 +574,13 @@ Choose the startup order that matches your broker:
   the worker or saving the workflow will not create them.
 
 For the single-recording baseline, pause further capture after the test clip
-has arrived. If you started the example Agent in Step 1, run
+has arrived. If you started the example Agent in Step 2, run
 `docker stop introduction-agent` **on the Docker host** to pause that example
 container temporarily. Do not stop an unrelated or production Agent.
 
 Open your workflow's **View runs** in Hub and find the run for the test clip.
 Note its **Run ID**. Open that recording in Hub and verify its filename
-timestamp and marker interval using Step 5. Keep `MARKER_START_TIMESTAMP` empty
+timestamp and marker interval using Step 6. Keep `MARKER_START_TIMESTAMP` empty
 for an Agent-generated key.
 
 Before starting the worker, confirm that your queue contains only this test
@@ -578,7 +594,7 @@ Do not trigger another recording merely to start the worker.
 Before starting, confirm the queue contains only that test invocation, its
 signed media URL is still valid, and its filename timestamp matches the
 recording. If using `MARKER_START_TIMESTAMP`, confirm the override matches it
-instead. Set `WORKFLOW_BEARER_TOKEN` to the raw token from Step 3 and
+instead. Set `WORKFLOW_BEARER_TOKEN` to the raw token from Step 4 and
 `RESULT_MODE=http` in `.env`.
 
 In VS Code, open **Run and Debug**, select **Stage: HTTP callback (one-shot)**,
@@ -606,7 +622,7 @@ RabbitMQ connection also stop it; investigate the logged error before restarting
 This profile does not automatically reconnect. Keep the one-shot profile for
 the isolated baseline checks below.
 
-## 7. Verify the result in Hub
+## 8. Verify the result in Hub
 
 1. Open **Workflows**, find your workflow, and select **View runs**, or open
    **Runs** and filter to it.
@@ -661,6 +677,7 @@ Useful references:
 
 ## Completion checklist
 
+- [ ] Augment Vision Slack is joined through `https://join.uug.ai`, the tutor handoff was requested in **#general**, and the conversation continued in a DM.
 - [ ] Hub account is created and the tutor has assigned an active exercise plan.
 - [ ] Tutor-provided Agent credentials are available, and the default organisation/project created during registration is selected.
 - [ ] Tutor-provided RabbitMQ connection details, credentials, and queue declaration permission are available.
