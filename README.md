@@ -116,6 +116,25 @@ recording interval, and Hub callback credentials are configured.
 The dev container supports `amd64` and `arm64`. It installs Go, OpenCV, ONNX
 Runtime, and the checksum-verified YOLO11n model.
 
+### Tutor handoff
+
+Some required information is intentionally not stored in this repository.
+Before continuing to Step 1, stop and contact your tutor through the approved
+course channel if you are missing any of the following:
+
+- confirmation that your Hub plan is active;
+- your Agent public access key and private key;
+- the RabbitMQ host, port, virtual host, TLS mode, username, and password;
+- confirmation that the RabbitMQ account may declare, publish to, and consume
+  from your learner-specific queues; or
+- access to the workflow designer and `forwarder` block.
+
+Include the email address used for your Hub account so the tutor can identify
+it. Never send your Hub password, access token, Agent private key, or RabbitMQ
+password in an unapproved channel. Wait for the missing information or access
+to be confirmed instead of guessing values or copying another learner's
+configuration.
+
 ## 0. Create your Hub account and request a plan
 
 1. Open [app.kerberos.io](https://app.kerberos.io), create a Hub account, and
