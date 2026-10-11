@@ -145,17 +145,22 @@ from the tutor. These details explain how those settings map to the worker.
 | **Completion mode** | **Wait for result** (`mode=callback`), not **Complete after delivery** | `RESULT_MODE=http` for the final run |
 | **Maximum retries** | Keep `5` for the baseline; this limits retries of failed forwarder delivery, not worker processing | No matching worker setting |
 | **Host**, **Port** | Destination broker hostname and port, e.g. `broker.example.com`, `5671` | `RABBITMQ_HOST=broker.example.com:5671` |
-| **Queue** | Destination queue, e.g. `person-detection-exercise` | `STAGE_QUEUE=person-detection-exercise` |
+| **Queue** | Learner-specific `${username}-forward-queue`, e.g. `alex-forward-queue` | `STAGE_QUEUE=alex-forward-queue` |
 | **Virtual host** | Destination virtual host, commonly `/`; blank uses `/`, not the deployment virtual host | `RABBITMQ_VHOST=/` |
 | **Use TLS** | Enabled outside an approved trusted local network | `RABBITMQ_SCHEME=amqps` |
 | **Declare destination queues** | Enabled if the forwarder's credentials may create durable quorum queues; otherwise have the administrator provision both queues first | The worker never declares queues |
-| **Destination dead-letter queue** | A different queue from **Queue**; blank uses `<queue>.forwarder-dead-letter` | No matching worker setting |
+| **Destination dead-letter queue** | Matching `${username}-forward-dead-letter-queue`, e.g. `alex-forward-dead-letter-queue` | No matching worker setting |
 | **Username**, **Password** | Your destination credentials, permitted to publish and declare/check queues as configured; deployment credentials are never used | `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD`: credentials permitted to consume |
 
 The forwarder and worker must use the same broker, queue, virtual host, and TLS
 configuration. They can use separate publisher and consumer credentials.
 `STAGE_OPERATION=forwarder` matches the operation, not the workflow name or
 block label.
+
+Each learner chooses a unique lowercase username made from letters, numbers,
+and hyphens. `${username}` is a naming placeholder, not the shared RabbitMQ
+login. Unique destination and dead-letter queues allow multiple learners to
+run workers concurrently without competing for the same messages.
 
 In **Wait for result** (`callback`) mode, Hub waits for your stage to return
 its result. In **Complete after delivery** (`delivered`) mode, forwarding the

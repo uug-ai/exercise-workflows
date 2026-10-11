@@ -109,7 +109,7 @@ recording interval, and Hub callback credentials are configured.
 - A Hub deployment with the workflow designer and `forwarder` block enabled
 - A RabbitMQ destination reachable by both the Hub forwarder and your
   development container, with credentials for each and permission to use the
-  destination queues described in Step 2
+  learner-specific destination queues described in Step 2
 - A publicly reachable HTTPS Hub API configured as the forwarder's callback base URL
 - A Hub token with the `workflow-runs.update` scope (created in Step 3)
 
@@ -315,15 +315,26 @@ relying on the deployment's broker or credentials.
 **Ask your tutor for the RabbitMQ information before filling in these settings:**
 
 - **Host** (broker hostname) and **Port**
-- your assigned **Queue** and **Virtual host**
+- the **Virtual host** and learner queue naming rule
 - **Username** and **Password** for the forwarder
 - whether **Use TLS** must be enabled
 - the worker's consumer credentials, if different from the forwarder's
-- the destination dead-letter queue name, and whether both queues are already
-  provisioned or the forwarder is allowed to declare them
+- whether the forwarder is allowed to declare destination queues
 
 Receive passwords through the tutor's approved private channel. Do not use
 your Hub account password or Agent keys as RabbitMQ credentials.
+
+Create your own queue names before configuring the block. Choose a short,
+unique, lowercase username containing only letters, numbers, and hyphens, then
+use:
+
+- `${username}-forward-queue` for the destination queue; and
+- `${username}-forward-dead-letter-queue` for the dead-letter queue.
+
+For example, the username `alex` produces `alex-forward-queue` and
+`alex-forward-dead-letter-queue`. Replace `${username}` with your chosen value;
+do not enter the braces or use the shared RabbitMQ login name. Use the same
+queue names throughout the exercise.
 
 **Fill in the highlighted fields:** **Host** (your RabbitMQ hostname), **Port**,
 **Queue**, **Username**, and **Password** are required before enabling the
@@ -337,9 +348,11 @@ virtual host.
 | **Provider** | **RabbitMQ** (`broker=rabbitmq`) | The worker consumes RabbitMQ |
 | **Completion mode** | **Wait for result** (`mode=callback`), not **Complete after delivery** | `RESULT_MODE=http` for the final run |
 | **Host**, **Port** | Destination broker hostname and port, e.g. `broker.example.com`, `5671` | `RABBITMQ_HOST=broker.example.com:5671` |
-| **Queue** | Destination queue, e.g. `person-detection-exercise` | `STAGE_QUEUE=person-detection-exercise` |
+| **Queue** | Your unique queue, e.g. `alex-forward-queue` | `STAGE_QUEUE=alex-forward-queue` |
 | **Virtual host** | Destination virtual host, commonly `/`; blank uses `/`, not the deployment virtual host | `RABBITMQ_VHOST=/` |
 | **Use TLS** | Enabled outside an approved trusted local network | `RABBITMQ_SCHEME=amqps` |
+| **Declare destination queues** | Enabled for this exercise | The worker never declares queues |
+| **Destination dead-letter queue** | Your matching unique queue, e.g. `alex-forward-dead-letter-queue` | No matching worker setting |
 | **Username**, **Password** | Forwarder credentials supplied by your tutor | `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD`: worker credentials supplied by your tutor |
 
 ![Forwarder Delivery settings with RabbitMQ selected, Wait for result enabled, and Maximum retries set to 5](docs/images/hub-workflow-forwarder.png)
@@ -349,11 +362,12 @@ are shown.*
 
 The forwarder and worker must use the same broker, queue, virtual host, and TLS
 configuration. They can use separate publisher and consumer credentials.
-Keep **Maximum retries** at `5`. Set **Declare destination queues** and
-**Destination dead-letter queue** as instructed by your tutor; the worker
-does not create queues. Do not use Hub's internal queues or put your Hub access
-token in the forwarder settings. Use TLS outside an approved trusted local
-network, and do not disable certificate validation.
+Keep **Maximum retries** at `5`. Enable **Declare destination queues** and set
+**Destination dead-letter queue** to your
+`${username}-forward-dead-letter-queue`; the worker does not create queues. Do
+not use Hub's internal queues or put your Hub access token in the forwarder
+settings. Use TLS outside an approved trusted local network, and do not disable
+certificate validation.
 
 Select **Create workflow** to save the disabled draft. No downstream block is
 needed: returning the result to Hub completes this single-stage workflow.
@@ -451,7 +465,7 @@ instead of changing its value.
 | `RABBITMQ_HOST` | Broker hostname and port |
 | `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD` | Broker credentials |
 | `RABBITMQ_VHOST` | Assigned virtual host, commonly `/` |
-| `STAGE_QUEUE` | Existing queue that receives workflow invocations |
+| `STAGE_QUEUE` | Your `${username}-forward-queue`, which receives workflow invocations |
 | `MARKER_START_TIMESTAMP` | Optional Unix-seconds override; leave empty to use each recording's timestamp from the Agent filename in `media.key` |
 | `MARKER_DURATION_SECONDS` | Marker interval in seconds; `1..3600`, default `30` |
 | `RESULT_MODE` | Set to `http` to submit the result to Hub |
@@ -507,8 +521,9 @@ does not yet derive entry and exit timestamps from a person track.
 
 ### Prepare the destination queue
 
-Use a fresh, dedicated exercise queue with no other consumers. Keep the
-workflow disabled until configuration and the callback token are ready.
+Use the unique `${username}-forward-queue` configured in Step 2. This lets
+multiple learners run concurrently without consuming each other's messages.
+Keep the workflow disabled until configuration and the callback token are ready.
 Choose the startup order that matches your broker:
 
 - **Queues already exist:** have the administrator confirm both the destination
@@ -533,10 +548,10 @@ Note its **Run ID**. Open that recording in Hub and verify its filename
 timestamp and marker interval using Step 5. Keep `MARKER_START_TIMESTAMP` empty
 for an Agent-generated key.
 
-Before starting the worker, ask your tutor to confirm that the dedicated queue
-contains only this test invocation and that no other consumer is using it.
-If other recordings have queued, do not assume `-once` will select your chosen
-recording: arrange an isolated test delivery with the tutor before continuing.
+Before starting the worker, confirm that your queue contains only this test
+invocation and that `STAGE_QUEUE` exactly matches the queue configured in the
+forwarder. If other recordings have queued, do not assume `-once` will select
+your chosen recording: arrange an isolated test delivery before continuing.
 Do not trigger another recording merely to start the worker.
 
 ### HTTP callback
@@ -629,7 +644,7 @@ Useful references:
 
 - [ ] Hub account is created and the tutor has assigned an active exercise plan.
 - [ ] Tutor-provided Agent credentials are available, and the default organisation/project created during registration is selected.
-- [ ] Tutor-provided RabbitMQ connection details, credentials, and queue provisioning instructions are available.
+- [ ] Tutor-provided RabbitMQ connection details, credentials, and queue declaration permission are available.
 - [ ] Own site is created in the exercise organisation/project, and its Site ID is entered in the Agent UI's Hub settings.
 - [ ] Hub API URL, Agent keys, and Kerberos Hub persistence are configured and saved through **Settings → Persistence**; both connection checks succeed.
 - [ ] Agent camera preview works.
@@ -638,7 +653,7 @@ Useful references:
 - [ ] A recording is playable in Hub.
 - [ ] Workflow connects an automatic start block to the `forwarder` block.
 - [ ] The start connection selects only the exercise Agent and uses an active schedule.
-- [ ] Forwarder uses the correct external destination queue and `callback` mode.
+- [ ] Forwarder uses the learner's `${username}-forward-queue`, matching unique dead-letter queue, and `callback` mode.
 - [ ] Both destination queues exist before the worker starts consuming.
 - [ ] Workflow is saved and enabled for the test.
 - [ ] Dev container has been rebuilt successfully.
