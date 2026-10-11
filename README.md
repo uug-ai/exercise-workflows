@@ -715,3 +715,14 @@ The [addendum](ADDENDUM.md) contains implementation details, result payload
 examples, delivery/retry behavior, security details, troubleshooting, advanced
 settings, and developer tests. It is reference material, not an additional
 required step in the exercise.
+
+## Help needed?
+
+You can ask for help at any point in the Augment Vision Slack:
+
+- post a general question in **#general** so the community or team can help; or
+- continue in a direct message with your tutor for account-specific guidance.
+
+Never post passwords, tokens, private keys, signed URLs, or other credentials
+in **#general**. Move account details to the tutor DM and use the approved
+private method when a secret must be shared.
