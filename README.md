@@ -211,13 +211,13 @@ docker run -d --name introduction-agent --restart unless-stopped \
   -e AGENT_NAME=introduction-agent \
   -e AGENT_KEY=introduction-agent-<your-name> \
   -e AGENT_CAPTURE_IPCAMERA_RTSP='rtsp://fake.kerberos.io:8554/stream' \
-  -e AGENT_CAPTURE_CONTINUOUS=true \
   kerberos/agent:latest
 ```
 
 Replace `<your-name>` to give the Agent a unique `AGENT_KEY`; Hub uses it as
-the stable device identity. This command configures the demo camera and
-continuous capture, but does not yet connect the Agent to Hub.
+the stable device identity. This command configures the demo camera, but does
+not yet connect the Agent to Hub or choose the recording behavior. Configure
+motion-based recording and its ROI in the Agent UI below.
 
 Open [http://localhost:8080](http://localhost:8080). The default local Agent
 credentials are `root` / `root`; change them before exposing the UI outside
@@ -252,45 +252,47 @@ frontend, not in the Docker command or the worker's `.env` file.
    selected provider, and region persist. Keep keys masked and out of
    screenshots, logs, and Git.
 
-### Configure a region of interest (ROI)
+### Configure motion-based recording and a region of interest (ROI)
 
-Before verifying recordings, configure an ROI in the **local Agent UI**:
+Before verifying recordings, configure motion-based recording in the **local
+Agent UI**:
 
-1. Confirm that the camera preview shows the demo stream.
-2. Open **Settings → Conditions → Region Of Interest** and wait for the camera
+1. Open **Settings**, find the **Recording** section, turn **Continuous
+   recording** off, and save. This makes recording depend on detected motion.
+2. Confirm that the camera preview shows the demo stream.
+3. Open **Settings → Conditions → Region Of Interest** and wait for the camera
    snapshot to load.
-3. Select **Rectangular box (R)** and drag a region covering the demo scene.
+4. Select **Rectangular box (R)** and drag a region covering the demo scene.
    For the baseline, cover almost the whole image, starting slightly inside
    its edges, so relevant activity is not excluded.
-4. Select **Save** in the ROI section.
-5. Reload the settings page and confirm that the saved region is still drawn
-   over the snapshot.
+5. Select **Save** in the ROI section.
+6. Reload the settings page and confirm that continuous recording remains off
+   and the saved region is still drawn over the snapshot.
 
-An ROI defines where the Agent checks for motion; it is not a person-detection
-filter. The exercise's YOLO stage still analyzes the downloaded video, not
-just the Agent ROI.
-
-Keep **Continuous recording** enabled for the baseline, as configured by
-`AGENT_CAPTURE_CONTINUOUS=true` above. Continuous recording does not require
-motion inside an ROI to start a clip. If you later switch to motion-based
-recording, activity must occur inside the saved ROI to trigger detection.
-Keep other recording conditions permissive while testing.
+The ROI defines where the Agent checks for motion and now determines whether a
+recording starts. It is not a person-detection filter: the exercise's YOLO
+stage still analyzes the complete downloaded video, not just the ROI. Keep
+other recording conditions permissive and ensure the demo stream has visible
+activity inside the saved region.
 
 ### Verify capture and upload
 
 Verify that:
 
 1. the camera preview works
-2. the ROI remains visible after reopening the Agent settings
-3. the Hub connection and Kerberos Hub persistence settings are saved in the
+2. continuous recording remains off and the ROI remains visible after
+   reopening the Agent settings
+3. motion inside the ROI creates a playable clip in the Agent's local
+   **Recordings** page
+4. the Hub connection and Kerberos Hub persistence settings are saved in the
    Agent UI and both connection checks succeed
-4. the Agent appears online in Hub and belongs to the site you created
-5. a recording made by the Agent is playable in Hub
+5. the Agent appears online in Hub and belongs to the site you created
+6. that motion-triggered recording is playable in Hub
 
 An online Agent alone does not prove that capture or upload works. If Hub shows
 no recordings, check for a playable clip in the Agent's local **Recordings**
-page, then inspect its recording conditions, cloud settings, and capture/upload
-errors. Do not assume adding an ROI fixes missing continuous recordings.
+page, then confirm that activity occurs inside the saved ROI and inspect the
+remaining recording conditions, cloud settings, and capture/upload errors.
 See [Agent recording troubleshooting](ADDENDUM.md#troubleshooting).
 
 See the
@@ -684,7 +686,8 @@ Useful references:
 - [ ] Own site is created in the exercise organisation/project, and its Site ID is entered in the Agent UI's Hub settings.
 - [ ] Hub API URL, Agent keys, and Kerberos Hub persistence are configured and saved through **Settings → Persistence**; both connection checks succeed.
 - [ ] Agent camera preview works.
-- [ ] Agent ROI covers the exercise scene, is saved, and persists after reloading settings.
+- [ ] Continuous recording is disabled; the Agent ROI covers the exercise scene, is saved, and persists after reloading settings.
+- [ ] Motion inside the ROI creates a playable local recording.
 - [ ] Agent is online in Hub.
 - [ ] A recording is playable in Hub.
 - [ ] Workflow connects an automatic start block to the `forwarder` block.
