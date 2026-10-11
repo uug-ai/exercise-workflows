@@ -1,4 +1,4 @@
-module github.com/uug-ai/exercise
+module github.com/uug-ai/exercise-workflows
 
 go 1.25.8
 

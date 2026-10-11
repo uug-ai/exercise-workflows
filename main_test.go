@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/uug-ai/exercise/internal/app"
+	"github.com/uug-ai/exercise-workflows/internal/app"
 )
 
 func TestExecutablePackageLinksInternalApp(t *testing.T) {

@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/uug-ai/exercise/internal/app"
+	"github.com/uug-ai/exercise-workflows/internal/app"
 )
 
 func main() {
