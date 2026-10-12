@@ -1,5 +1,7 @@
 # Augment Vision Workflow Exercise
 
+![Augment Vision recording with a pedestrian classification](docs/images/hub-workflow-exercise-header.jpg)
+
 ## Goal of the exercise
 
 The goal of this exercise is to help a learner understand the complete Augment
