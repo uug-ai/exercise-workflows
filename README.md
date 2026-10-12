@@ -634,6 +634,17 @@ the isolated baseline checks below.
 3. Open the recording in Hub. For a clip containing a person, verify that the
    `person detected` marker appears at your configured interval and that the
    recording description contains the YOLO detection summary.
+
+   ![Hub recording detail showing the person detected workflow marker](docs/images/hub-workflow-result-marker.png)
+
+   *The completed workflow adds a `person detected` marker over the configured
+   recording interval.*
+
+   ![Hub recording description containing the YOLO detection summary](docs/images/hub-workflow-result-description.png)
+
+   *The media patch stores the deterministic YOLO summary in the recording
+   description.*
+
 4. Repeat queue preparation, timestamp verification, and one-shot callback
    with a recording without a person. To resume the example Agent, run
    `docker start introduction-agent` on the Docker host, then pause it again
