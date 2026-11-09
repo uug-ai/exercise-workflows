@@ -106,8 +106,10 @@ recording interval, and Hub callback credentials are configured.
   workflows in the organisation/project containing your Agent (see Step 1)
 - An active Hub plan assigned by your tutor
 - An Agent public access key and private key provided by your tutor in Step 1
-- An H.264 or H.265 RTSP camera stream. For this exercise, use
-  `rtsp://fake.kerberos.io:8554/stream`.
+- An H.264 or H.265 RTSP camera stream. The demo stream
+  `rtsp://fake.kerberos.io:8554/stream` is provided as a common baseline; your
+  own camera or recordings work too (see
+  [Use your own camera or recordings](#use-your-own-camera-or-recordings)).
 - A Hub deployment with the workflow designer and `forwarder` block enabled
 - A RabbitMQ destination reachable by both the Hub forwarder and your
   development container, with credentials for each and permission to use the
@@ -217,13 +219,34 @@ docker run -d --name introduction-agent --restart unless-stopped \
 ```
 
 Replace `<your-name>` to give the Agent a unique `AGENT_KEY`; Hub uses it as
-the stable device identity. This command configures the demo camera, but does
+the stable device identity. This command configures the demo camera (see
+[below](#use-your-own-camera-or-recordings) to use another source), but does
 not yet connect the Agent to Hub or choose the recording behavior. Configure
 motion-based recording and its ROI in the Agent UI below.
 
 Open [http://localhost:8080](http://localhost:8080). The default local Agent
 credentials are `root` / `root`; change them before exposing the UI outside
 your machine.
+
+### Use your own camera or recordings
+
+The demo stream is a base that gives everyone a working video source from the
+start; it is not a requirement. You are free to use whichever source suits
+your solution, for example:
+
+- **Your own IP camera:** set `AGENT_CAPTURE_IPCAMERA_RTSP` to the camera's
+  H.264 or H.265 RTSP URL. See the
+  [camera connection tutorial](https://doc.kerberos.io/tutorials/agent/connect-any-camera/).
+- **Your own recordings:** publish a video file as an RTSP stream (for
+  example with `ffmpeg` and an RTSP server such as MediaMTX) and point the
+  Agent at that stream.
+
+Whichever source you choose, recordings still reach Hub through your Agent,
+because the workflow is triggered by Agent recordings. The remaining steps
+are unchanged: pick footage with relevant activity for your model (people, for
+the baseline person detector) and draw the ROI over your own scene. Only use
+footage you are allowed to share, and keep identifiable people out of
+screenshots and Git.
 
 ### Connect to Hub through the Agent UI
 
@@ -261,10 +284,10 @@ Agent UI**:
 
 1. Open **Settings**, find the **Recording** section, turn **Continuous
    recording** off, and save. This makes recording depend on detected motion.
-2. Confirm that the camera preview shows the demo stream.
+2. Confirm that the camera preview shows the demo stream or your own source.
 3. Open **Settings → Conditions → Region Of Interest** and wait for the camera
    snapshot to load.
-4. Select **Rectangular box (R)** and drag a region covering the demo scene.
+4. Select **Rectangular box (R)** and drag a region covering the scene.
    For the baseline, cover almost the whole image, starting slightly inside
    its edges, so relevant activity is not excluded.
 5. Select **Save** in the ROI section.
@@ -274,7 +297,7 @@ Agent UI**:
 The ROI defines where the Agent checks for motion and now determines whether a
 recording starts. It is not a person-detection filter: the exercise's YOLO
 stage still analyzes the complete downloaded video, not just the ROI. Keep
-other recording conditions permissive and ensure the demo stream has visible
+other recording conditions permissive and ensure the stream has visible
 activity inside the saved region.
 
 ### Verify capture and upload
