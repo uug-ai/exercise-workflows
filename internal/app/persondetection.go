@@ -11,7 +11,6 @@ import (
 	"path"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -26,6 +25,29 @@ const maxMediaSize = 100 << 20
 
 var runIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 var signedMediaClient = &http.Client{Timeout: 2 * time.Minute}
+
+// Recording keys name the capture start in one of two filename forms:
+// "<unix-ms>-<device>.mp4" (dated keys, owner/yyyy/mm/dd/...) and
+// "<unix-seconds>_<capture>_..." (older Agent uploads).
+var datedRecordingName = regexp.MustCompile(`^([0-9]+)-[^/\\]+\.mp4$`)
+var legacyRecordingName = regexp.MustCompile(`^([0-9]+)_.+$`)
+
+// recordingStartFromKey returns the recording's start in Unix seconds.
+func recordingStartFromKey(key string) (int64, error) {
+	name := path.Base(key)
+	if match := datedRecordingName.FindStringSubmatch(name); match != nil {
+		millis, err := strconv.ParseInt(match[1], 10, 64)
+		if start := millis / 1000; err == nil && start >= 1 && start <= 253402300799 {
+			return start, nil
+		}
+	} else if match := legacyRecordingName.FindStringSubmatch(name); match != nil {
+		start, err := strconv.ParseInt(match[1], 10, 64)
+		if err == nil && start >= 1 && start <= 253402300799 {
+			return start, nil
+		}
+	}
+	return 0, errors.New("media.key filename must start with the recording's Unix-milliseconds timestamp followed by '-<device>.mp4', or its Unix-seconds timestamp followed by '_'; set MARKER_START_TIMESTAMP explicitly for nonstandard keys")
+}
 
 type handledInvocation struct {
 	runID    string
@@ -70,10 +92,9 @@ func handleInvocation(ctx context.Context, body []byte, stageOperation string, s
 		}
 	}
 	if start == 0 {
-		timestamp, filename, found := strings.Cut(path.Base(invocation.Media.Key), "_")
-		start, err = strconv.ParseInt(timestamp, 10, 64)
-		if !found || filename == "" || err != nil || start < 1 || start > 253402300799 {
-			return handledInvocation{}, errors.New("media.key must start its filename with the recording's Unix-seconds timestamp followed by '_'; set MARKER_START_TIMESTAMP explicitly for nonstandard keys")
+		start, err = recordingStartFromKey(invocation.Media.Key)
+		if err != nil {
+			return handledInvocation{}, err
 		}
 	}
 	if start < 1 || start > 253402300799 || duration < 1 || duration > 3600 || start > 253402300799-duration {
