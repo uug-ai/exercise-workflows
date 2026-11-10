@@ -166,8 +166,10 @@ In **Wait for result** (`callback`) mode, Hub waits for your stage to return
 its result. In **Complete after delivery** (`delivered`) mode, forwarding the
 message completes the stage immediately and the invocation has no callback
 block, so it cannot demonstrate this exercise's result-ingestion loop.
-The administrator must also configure `FORWARDER_CALLBACK_BASE_URL` to the
-public HTTPS Hub API base URL; you do not enter your Hub access token in the
+Callback mode also needs `FORWARDER_CALLBACK_BASE_URL` set to the public HTTPS
+Hub API base URL on the forwarder service. The exercise Hub already sets it to
+`https://api.cloud.kerberos.io`; only a self-hosted Hub deployment needs its
+administrator to configure it. You do not enter your Hub access token in the
 forwarder block.
 
 Do not use Hub's internal engine/stage queue as the external destination. The
@@ -275,6 +277,7 @@ Idempotency-Key: <runId>:<operation>
 | No workflow run appears | Workflow is enabled and saved; automatic start is connected; the connection selects your Agent and uses an active schedule; trigger a fresh recording or re-analysis. |
 | A run appears but nothing reaches your queue | Forwarder service, catalog operation, destination credentials, broker reachability, queue, virtual host, and TLS settings. |
 | Worker says it cannot consume `STAGE_QUEUE` | Confirm the queue exists in that virtual host and the consumer has read permission. For a new destination with declaration enabled, first trigger the forwarder's delivery as described in the README's queue preparation. |
+| Run stays **Running** after `forwarderDispatched` | Expected in **Wait for result** mode until your worker's callback succeeds. Start the worker on the queue that holds this run's invocation; if the run still does not resolve, check the worker log for the callback status code. |
 | Invocation has no `callback.url` | Forwarder mode must be `callback`, with the public Hub API base URL configured. Do not use this invocation to verify callback completion. |
 | Callback returns `401` or `403` | Raw token has no `Bearer ` prefix, is unexpired, belongs to the correct tenant, and has exactly `workflow-runs.update`. |
 | Callback returns `409` | A different result already completed that run/stage; use a fresh run rather than changing an already accepted result. |

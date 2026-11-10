@@ -114,7 +114,9 @@ recording interval, and Hub callback credentials are configured.
 - A RabbitMQ destination reachable by both the Hub forwarder and your
   development container, with credentials for each and permission to use the
   learner-specific destination queues described in Step 3
-- A publicly reachable HTTPS Hub API configured as the forwarder's callback base URL
+- A publicly reachable HTTPS Hub API configured as the forwarder's callback base URL.
+  The exercise Hub (`https://api.cloud.kerberos.io`) already has this
+  configured; you do not need to set or request anything.
 - A Hub token with the `workflow-runs.update` scope (created in Step 4)
 
 The dev container supports `amd64` and `arm64`. It installs Go, OpenCV, ONNX
@@ -422,6 +424,13 @@ virtual host.
 *Wait for result is the UI label for callback mode. No destination credentials
 are shown.*
 
+The **Completion mode** field always shows the help text "Callback requires a
+deployment-configured Hub callback URL." This describes the option; it is not
+a warning. The exercise Hub already provides that URL. Each message the
+forwarder publishes in **Wait for result** mode contains a `callback` block
+whose `url` is `https://api.cloud.kerberos.io/workflows/runs/<runId>`; your
+worker posts the result there.
+
 The forwarder and worker must use the same broker, queue, virtual host, and TLS
 configuration. They can use separate publisher and consumer credentials.
 Keep **Maximum retries** at `5`. Enable **Declare destination queues** and set
@@ -606,7 +615,9 @@ has arrived. If you started the example Agent in Step 2, run
 container temporarily. Do not stop an unrelated or production Agent.
 
 Open your workflow's **View runs** in Hub and find the run for the test clip.
-Note its **Run ID**. Open that recording in Hub and verify its filename
+Note its **Run ID**. The run stays **Running** after `forwarderDispatched`:
+in **Wait for result** mode Hub waits for your worker's callback, so this is
+expected while the worker is stopped. Open that recording in Hub and verify its filename
 timestamp and marker interval using Step 6. Keep `MARKER_START_TIMESTAMP` empty
 for an Agent-generated key.
 
