@@ -32,7 +32,10 @@ For each valid invocation, the worker:
 6. submits one of the two result forms below
 
 When `MARKER_START_TIMESTAMP` is empty, the marker interval starts at the
-Unix-seconds prefix of the Agent-generated filename in `media.key`. This is
+timestamp prefix of the recording's filename in `media.key`: Unix
+milliseconds followed by `-<device>.mp4` for dated keys
+(`owner/yyyy/mm/dd/<ms>-<device>.mp4`), or Unix seconds followed by `_` for
+older Agent keys. This is
 resolved independently for each delivery. The current invocation contract
 does not expose a structured recording timestamp. Nonstandard keys require an
 explicit `MARKER_START_TIMESTAMP` override for that recording; missing or
@@ -271,7 +274,7 @@ Idempotency-Key: <runId>:<operation>
 | Symptom | Check |
 | --- | --- |
 | Agent is online but no recording appears in Hub | Verify the local camera preview and a playable clip under Agent **Recordings**. Confirm [continuous recording is off and the ROI is saved](README.md#configure-motion-based-recording-and-a-region-of-interest-roi), then verify visible activity occurs inside it. Check the remaining recording conditions, cloud settings, and capture/upload errors in `docker logs --since 5m --tail 100 introduction-agent` on the Docker host. Redact credentials, tokens, and signed URLs before sharing logs. |
-| Worker cannot resolve the recording timestamp | Leave `MARKER_START_TIMESTAMP` empty for Agent-generated keys whose filename starts with Unix seconds followed by `_`. For a nonstandard key, obtain that recording's `data.media.startTimestamp` and set it as an explicit override. Never substitute the current time. |
+| Worker cannot resolve the recording timestamp | Leave `MARKER_START_TIMESTAMP` empty for Agent-generated keys: dated `<ms>-<device>.mp4` filenames and older filenames that start with Unix seconds followed by `_`. For a nonstandard key, obtain that recording's `data.media.startTimestamp` and set it as an explicit override. Never substitute the current time. |
 | No workflow run appears | Workflow is enabled and saved; automatic start is connected; the connection selects your Agent and uses an active schedule; trigger a fresh recording or re-analysis. |
 | A run appears but nothing reaches your queue | Forwarder service, catalog operation, destination credentials, broker reachability, queue, virtual host, and TLS settings. |
 | Worker says it cannot consume `STAGE_QUEUE` | Confirm the queue exists in that virtual host and the consumer has read permission. For a new destination with declaration enabled, first trigger the forwarder's delivery as described in the README's queue preparation. |

@@ -539,10 +539,16 @@ are documented in the [addendum](ADDENDUM.md#advanced-stage-settings).
 ### Verify the recording timestamp and marker interval
 
 Leave `MARKER_START_TIMESTAMP` empty for the baseline. The worker resolves the
-start separately for each invocation from the Unix-seconds prefix of the
-Agent-generated filename in `media.key`, including keys with a directory
-prefix. For example, `owner/1700000000_3-756_camera_0-0-0-0_0_30000.mp4`
-starts at `1700000000`.
+start separately for each invocation from the timestamp at the start of the
+recording's filename in `media.key`. Two filename forms are recognised:
+
+| Filename form | Example `media.key` | Marker start |
+| --- | --- | --- |
+| Dated key: Unix **milliseconds**, `-`, device key | `owner/2026/11/10/1794271439878-HKGGAUYW12OZD3Z1IN5Y01N258OHZ5.mp4` | `1794271439` |
+| Older Agent key: Unix **seconds**, `_`, capture details | `owner/1700000000_3-756_camera_0-0-0-0_0_30000.mp4` | `1700000000` |
+
+Current Agents upload recordings under dated keys; the worker converts the
+milliseconds to whole seconds.
 
 The current invocation contract carries `media.key` and `media.signedUrl`,
 but no structured `startTimestamp` field. A nonstandard filename without a
@@ -556,8 +562,8 @@ Use one known, playable recording from your exercise Agent:
    **Fetch/XHR**. Reload the recording detail page if necessary.
 3. Select the successful `GET /media/<recording-id>` request. In **Response**,
    expand `data.media` and check **`startTimestamp`** against the timestamp
-   prefix in **`videoFile`**. It is already Unix **seconds**; do not multiply
-   it by 1000. Note `videoFile` so you can match the recording to the
+   prefix in **`videoFile`**. `startTimestamp` is Unix **seconds**; a dated
+   `videoFile` prefix is milliseconds, so it matches the first ten digits. Note `videoFile` so you can match the recording to the
    invocation's `media.key`.
 4. Set `MARKER_DURATION_SECONDS` to a whole-second interval within the clip
    (`1..3600`); shorten the default `30` for shorter clips. Leave
