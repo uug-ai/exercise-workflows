@@ -70,10 +70,9 @@ func handleInvocation(ctx context.Context, body []byte, stageOperation string, s
 		}
 	}
 	if start == 0 {
-		timestamp, filename, found := strings.Cut(path.Base(invocation.Media.Key), "_")
-		start, err = strconv.ParseInt(timestamp, 10, 64)
-		if !found || filename == "" || err != nil || start < 1 || start > 253402300799 {
-			return handledInvocation{}, errors.New("media.key must start its filename with the recording's Unix-seconds timestamp followed by '_'; set MARKER_START_TIMESTAMP explicitly for nonstandard keys")
+		var ok bool
+		if start, ok = recordingStartSeconds(invocation.Media.Key); !ok {
+			return handledInvocation{}, errors.New("media.key filename must be '<unix-ms>-<deviceKey>.mp4' or start with '<unix-seconds>_'; set MARKER_START_TIMESTAMP explicitly for nonstandard keys")
 		}
 	}
 	if start < 1 || start > 253402300799 || duration < 1 || duration > 3600 || start > 253402300799-duration {
@@ -185,6 +184,50 @@ func downloadSignedMedia(ctx context.Context, signedURL string) ([]byte, error) 
 		return nil, fmt.Errorf("signed media exceeds the %d-byte in-memory limit", maxMediaSize)
 	}
 	return media, nil
+}
+
+// recordingStartSeconds resolves the recording start, in Unix seconds, from an
+// Agent-generated media key. Current Agents name recordings
+// "<unix-ms>-<deviceKey>.mp4"; older Agents used "<unix-seconds>_<details>".
+// Directory prefixes are ignored. Both formats are accepted.
+func recordingStartSeconds(key string) (int64, bool) {
+	base := path.Base(key)
+	if name, isMP4 := strings.CutSuffix(base, ".mp4"); isMP4 {
+		millis, deviceKey, found := strings.Cut(name, "-")
+		// Thirteen digits covers Unix milliseconds from 2001 to 2286 and keeps a
+		// seconds value followed by '-' from being read as a 1970 timestamp.
+		if found && deviceKey != "" && len(millis) == 13 && isDigits(millis) {
+			if value, err := strconv.ParseInt(millis, 10, 64); err == nil {
+				return validUnixSeconds(value / 1000)
+			}
+			return 0, false
+		}
+	}
+	seconds, filename, found := strings.Cut(base, "_")
+	if !found || filename == "" {
+		return 0, false
+	}
+	value, err := strconv.ParseInt(seconds, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return validUnixSeconds(value)
+}
+
+func validUnixSeconds(value int64) (int64, bool) {
+	return value, value >= 1 && value <= 253402300799
+}
+
+func isDigits(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func dispatchMetadata(invocation models.WorkflowInvocation) (runID, dispatchOperation string, callback *models.WorkflowCallback, err error) {

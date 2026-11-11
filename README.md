@@ -539,10 +539,14 @@ are documented in the [addendum](ADDENDUM.md#advanced-stage-settings).
 ### Verify the recording timestamp and marker interval
 
 Leave `MARKER_START_TIMESTAMP` empty for the baseline. The worker resolves the
-start separately for each invocation from the Unix-seconds prefix of the
-Agent-generated filename in `media.key`, including keys with a directory
-prefix. For example, `owner/1700000000_3-756_camera_0-0-0-0_0_30000.mp4`
-starts at `1700000000`.
+start separately for each invocation from the timestamp in the Agent-generated
+filename in `media.key`, including keys with a directory prefix. It accepts
+both Agent naming formats:
+
+| Agent filename format | Example `media.key` | Marker start |
+| --- | --- | --- |
+| Current: `<unix-ms>-<deviceKey>.mp4` | `owner/2026/08/05/1785934709414-camera1.mp4` | `1785934709` (milliseconds rounded down to seconds) |
+| Older: `<unix-seconds>_<details>` | `owner/1700000000_3-756_camera_0-0-0-0_0_30000.mp4` | `1700000000` |
 
 The current invocation contract carries `media.key` and `media.signedUrl`,
 but no structured `startTimestamp` field. A nonstandard filename without a
@@ -557,7 +561,8 @@ Use one known, playable recording from your exercise Agent:
 3. Select the successful `GET /media/<recording-id>` request. In **Response**,
    expand `data.media` and check **`startTimestamp`** against the timestamp
    prefix in **`videoFile`**. It is already Unix **seconds**; do not multiply
-   it by 1000. Note `videoFile` so you can match the recording to the
+   it by 1000. For a current `<unix-ms>-<deviceKey>.mp4` filename, compare it
+   with the first ten digits of the prefix. Note `videoFile` so you can match the recording to the
    invocation's `media.key`.
 4. Set `MARKER_DURATION_SECONDS` to a whole-second interval within the clip
    (`1..3600`); shorten the default `30` for shorter clips. Leave

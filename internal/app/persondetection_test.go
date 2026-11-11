@@ -126,6 +126,10 @@ func TestHandleInvocationRecordingTimestamp(t *testing.T) {
 		{"recording start", "1700000000_3-756_camera_0-0-0-0_0_30000.mp4", 0, 30, 1700000000, false},
 		{"different recording", "1700000060_3-756_camera_0-0-0-0_0_30000.mp4", 0, 30, 1700000060, false},
 		{"nested key", "owner/site/1700000000_3-756_camera_0-0-0-0_0_30000.mp4", 0, 30, 1700000000, false},
+		{"agent milliseconds key", "1785934709414-device-key.mp4", 0, 30, 1785934709, false},
+		{"agent milliseconds dated key", "owner/2026/08/05/1785934709414-camera1.mp4", 0, 30, 1785934709, false},
+		{"agent milliseconds rounds down", "1785934709999-camera1.mp4", 0, 30, 1785934709, false},
+		{"override takes precedence over milliseconds key", "1785934709414-camera1.mp4", 1700000100, 30, 1700000100, false},
 		{"override takes precedence", "1700000000_recording.mp4", 1700000100, 30, 1700000100, false},
 		{"override supports nonstandard key", "recording.mp4", 1700000100, 30, 1700000100, false},
 		{"missing timestamp", "recording.mp4", 0, 30, 0, true},
@@ -138,6 +142,11 @@ func TestHandleInvocationRecordingTimestamp(t *testing.T) {
 		{"integer overflow", "9223372036854775808_recording.mp4", 0, 30, 0, true},
 		{"interval overflow", "253402300799_recording.mp4", 0, 30, 0, true},
 		{"invalid duration", "1700000000_recording.mp4", 0, 0, 0, true},
+		{"milliseconds key without device", "1785934709414-.mp4", 0, 30, 0, true},
+		{"milliseconds key without mp4", "1785934709414-camera1", 0, 30, 0, true},
+		{"milliseconds key with seconds", "1785934709-camera1.mp4", 0, 30, 0, true},
+		{"zero milliseconds", "0-camera1.mp4", 0, 30, 0, true},
+		{"milliseconds overflow", "9223372036854775808-camera1.mp4", 0, 30, 0, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			body := strings.Replace(sampleInvocation, "recording.mp4", test.key, 1)
