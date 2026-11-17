@@ -131,8 +131,9 @@ Terms of Service require for viewing the repository on GitHub.
    tokens.
 
    If your account is inactive for one year, UUG.AI emails you to say that
-   your account and the data linked to it will be removed automatically, and
-   then removes them.
+   your account and the data linked to it will be removed automatically 30
+   days later. During those 30 days you can keep your account by signing in.
+   If you do not, the account and its data are removed when the 30 days end.
 4. **Retained copies.** Some copies are kept for a limited time after
    deletion, and are then deleted automatically:
    - **Backups** are kept for up to 30 days, only for disaster recovery, and
