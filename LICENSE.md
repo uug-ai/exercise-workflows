@@ -129,6 +129,10 @@ Terms of Service require for viewing the repository on GitHub.
    files, immediately. When you finish the exercise, close your account; if you
    keep it for now, at least disable your workflows and delete your access
    tokens.
+
+   If your account is inactive for one year, UUG.AI emails you to say that
+   your account and the data linked to it will be removed automatically, and
+   then removes them.
 4. **Retained copies.** Some copies are kept for a limited time after
    deletion, and are then deleted automatically:
    - **Backups** are kept for up to 30 days, only for disaster recovery, and
