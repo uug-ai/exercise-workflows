@@ -6,6 +6,7 @@ _Last updated: 17 November 2026_
 > **Summary.** This summary helps you read the terms. It does not replace them.
 >
 > - This repository is intended **for learning and skills development only**.
+>   You must be **18 years or older** to use it.
 > - If you work on this exercise and put your work online, keep it in a
 >   **private repository**. Do not use GitHub's **Fork** button, because a fork
 >   of a public repository is public.
@@ -25,6 +26,9 @@ at [support@uug.ai](mailto:support@uug.ai).
 These terms apply to everyone who accesses, copies, or uses this repository.
 By doing any of those things, you accept these terms. If you do not accept
 them, do not use the repository.
+
+You must be at least 18 years old to use the Materials or the Exercise
+Environment, as defined below. By using them, you confirm that you are.
 
 ## 1. Definitions
 
@@ -157,6 +161,9 @@ Terms of Service require for viewing the repository on GitHub.
    tutor. You also have the right to lodge a complaint with a data protection
    supervisory authority. In Belgium, this is the Data Protection Authority
    (Gegevensbeschermingsautoriteit / Autorité de protection des données).
+   For more about how UUG.AI handles personal data, see our
+   [privacy policy](https://uug.ai/privacy/). For camera footage processed with
+   our products, see [GDPR and our products](https://uug.ai/gdpr/).
 6. **Save what you want to keep.** Deleted data cannot be recovered. If you
    want to keep anything, such as your own notes, results, or screenshots,
    save it yourself before the exercise ends or before you close your account.
