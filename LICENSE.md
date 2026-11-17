@@ -18,14 +18,22 @@ _Last updated: 17 November 2026_
 > - Everything is provided **"as is"**, without any warranty, and you use it
 >   **at your own risk**.
 
+These terms are issued by UUG.AI BV, Bijlokehof 11, 9000 Ghent, Belgium,
+enterprise number 1013.644.852 (RPR Gent, division Gent). You can contact us
+at [support@uug.ai](mailto:support@uug.ai).
+
 These terms apply to everyone who accesses, copies, or uses this repository.
 By doing any of those things, you accept these terms. If you do not accept
 them, do not use the repository.
 
 ## 1. Definitions
 
-- **"UUG.AI"**, **"we"**, and **"us"** mean UUG.AI and its affiliates, and
-  their directors, employees, tutors, and contributors.
+- **"UUG.AI"**, **"we"**, and **"us"** mean UUG.AI BV, a Belgian private
+  limited liability company (besloten vennootschap) with its registered office
+  at Bijlokehof 11, 9000 Ghent, Belgium, and enterprise number 1013.644.852
+  (RPR Gent, division Gent).
+- **"UUG.AI Parties"** means UUG.AI, its affiliates, and their directors,
+  employees, tutors, and contributors.
 - **"Materials"** means the contents of this repository as published by
   UUG.AI, in every version. This includes source code, documentation, images,
   configuration, examples, and instructions.
@@ -143,9 +151,12 @@ Terms of Service require for viewing the repository on GitHub.
      accountability, are kept for up to 400 days.
 
    Data may also be kept longer where the law requires it.
-5. **Your rights.** You can ask UUG.AI at any time, through your tutor, to
-   delete your account and personal data, or to exercise your other rights
-   under data protection law.
+5. **Your rights.** You can ask UUG.AI at any time to delete your account and
+   personal data, or to exercise your other rights under data protection law,
+   by emailing [support@uug.ai](mailto:support@uug.ai) or by asking your
+   tutor. You also have the right to lodge a complaint with a data protection
+   supervisory authority. In Belgium, this is the Data Protection Authority
+   (Gegevensbeschermingsautoriteit / Autorité de protection des données).
 6. **Save what you want to keep.** Deleted data cannot be recovered. If you
    want to keep anything, such as your own notes, results, or screenshots,
    save it yourself before the exercise ends or before you close your account.
@@ -186,24 +197,26 @@ You are responsible for complying with them.
 
 ## 9. No warranty
 
-To the maximum extent permitted by applicable law, the Materials and the
-Exercise Environment are provided **"as is"** and **"as available"**, with all
-faults and without any warranty, whether express, implied, or statutory. This
-includes any warranty of merchantability, fitness for a particular purpose,
-title, non-infringement, accuracy, security, or availability. UUG.AI does not
+To the maximum extent permitted by applicable law, the UUG.AI Parties provide
+the Materials and the Exercise Environment **"as is"** and **"as available"**,
+with all faults and without any warranty, whether express, implied, or
+statutory. This includes any warranty of merchantability, fitness for a
+particular purpose, title, non-infringement, accuracy, security, or
+availability. UUG.AI does not
 warrant that the Materials are complete, correct, or up to date, or that they
 will produce any particular result.
 
 ## 10. Limitation of liability
 
-To the maximum extent permitted by applicable law, UUG.AI is not liable for
-any direct, indirect, incidental, special, consequential, exemplary, or
-punitive damages. This includes loss of profit, revenue, data, or goodwill,
-and business interruption. It applies to damages arising out of or in
+To the maximum extent permitted by applicable law, the UUG.AI Parties are not
+liable for any direct, indirect, incidental, special, consequential,
+exemplary, or punitive damages. This includes loss of profit, revenue, data,
+or goodwill, and business interruption. It applies to damages arising out of or in
 connection with the Materials, Your Work, the Exercise Environment, the
 removal of your data, or these terms. It applies under any theory of
 liability, including contract, tort (including negligence), and strict
-liability, even if UUG.AI was advised of the possibility of such damages.
+liability, even if a UUG.AI Party was advised of the possibility of such
+damages.
 
 Nothing in these terms excludes or limits any liability that cannot be
 excluded or limited under applicable law. This includes liability for fraud,
@@ -212,10 +225,10 @@ negligence, and liability under mandatory consumer protection law.
 
 ## 11. Indemnity
 
-To the extent permitted by applicable law, you will indemnify UUG.AI against
-any third-party claim, and the resulting losses, damages, and reasonable
-costs, that arises from Your Work, from your use of the Materials or the
-Exercise Environment, or from your breach of these terms.
+To the extent permitted by applicable law, you will indemnify the UUG.AI
+Parties against any third-party claim, and the resulting losses, damages, and
+reasonable costs, that arises from Your Work, from your use of the Materials
+or the Exercise Environment, or from your breach of these terms.
 
 ## 12. No other relationship or obligation
 
@@ -244,7 +257,11 @@ Sections 4 to 13 and section 15 survive the end of the licence.
 ## 15. General
 
 - UUG.AI may update these terms by publishing a new version in this
-  repository. The new version applies from the moment it is published.
+  repository, with a new "Last updated" date. UUG.AI announces material
+  changes in the README. The new version applies to your use of the Materials
+  and the Exercise Environment after it is published; it does not apply
+  retroactively. If you do not accept the new version, stop using the
+  Materials and close your account.
 - If a court finds that a provision of these terms is invalid or
   unenforceable, that provision is limited to the minimum extent necessary,
   and the other provisions stay in effect.
@@ -254,6 +271,14 @@ Sections 4 to 13 and section 15 survive the end of the licence.
   Materials. A separate written agreement between you and UUG.AI takes
   precedence where the two conflict.
 - If these terms are translated, the English version prevails.
+- These terms are governed by Belgian law. The courts of Ghent (Gent
+  division) have exclusive jurisdiction over any dispute arising out of or in
+  connection with these terms.
+- If you are a consumer, this choice of law does not deprive you of the
+  protection of the mandatory rules of the law of the country where you
+  habitually reside. You may also bring proceedings in the courts of that
+  country, and UUG.AI will bring proceedings against you in the courts that
+  mandatory law requires.
 
 ## How to keep your copy private
 
