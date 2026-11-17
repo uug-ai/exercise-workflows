@@ -1,5 +1,22 @@
 # Augment Vision Workflow Exercise
 
+> [!IMPORTANT]
+> **This repository is for learning and skills development only.** By using
+> it, you agree to the [learning-use licence and disclaimer](LICENSE.md). In
+> short:
+>
+> - **Keep your work private.** If you put your work online, use a
+>   **private** repository. Do not use GitHub's **Fork** button, because forks
+>   of a public repository are public. See
+>   [How to keep your copy private](LICENSE.md#how-to-keep-your-copy-private).
+> - **UUG.AI does not take ownership of your results or modifications** and
+>   is not responsible for them.
+> - **Your Hub subscription is free and temporary.** When the exercise ends,
+>   all data is removed from the Hub tenant by closing your account, so save
+>   anything you want to keep beforehand.
+> - Everything is provided **"as is"**, without any warranty, and you use it
+>   at your own risk.
+
 ![Augment Vision recording with a pedestrian classification](docs/images/hub-workflow-exercise-header.jpg)
 
 ## Goal of the exercise
@@ -100,6 +117,8 @@ recording interval, and Hub callback credentials are configured.
 
 ## Prerequisites
 
+- A private copy of this repository (see
+  [How to keep your copy private](LICENSE.md#how-to-keep-your-copy-private))
 - Docker
 - VS Code with the Dev Containers extension
 - A Hub owner account for creating an access token, and permission to create
