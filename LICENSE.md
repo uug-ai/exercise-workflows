@@ -1,5 +1,7 @@
 # Learning-use licence and disclaimer
 
+_Last updated: 17 November 2026_
+
 > [!IMPORTANT]
 > **Summary.** This summary helps you read the terms. It does not replace them.
 >
@@ -10,7 +12,9 @@
 > - **UUG.AI does not take ownership of your results or modifications** and is
 >   not responsible for them.
 > - You get a **free Hub subscription for the exercise only**. When the
->   exercise ends, **all your data is removed** by closing the account.
+>   exercise ends, UUG.AI revokes it and your recordings are deleted. **Close
+>   your Hub account yourself** to delete your account and everything left in
+>   it.
 > - Everything is provided **"as is"**, without any warranty, and you use it
 >   **at your own risk**.
 
@@ -106,26 +110,50 @@ Terms of Service require for viewing the repository on GitHub.
 
 ## 6. Exercise subscription and data retention
 
-1. For the exercise, UUG.AI gives you a **free subscription** to a Hub tenant.
-   The subscription is only for the duration of the exercise, for the purpose
-   in section 2. It does not entitle you to any continued service, paid plan,
-   or service level.
-2. **When the exercise ends, UUG.AI will remove all data in your exercise
-   account from the tenant using Hub's close-account feature.** This includes
-   recordings, markers, metadata, workflows, devices, sites, and access
-   tokens. Your account and its credentials stop working.
-3. UUG.AI may also suspend or close the account earlier. This can happen, for
-   example, if you breach these terms, if the exercise is abandoned, or if this
-   is needed to protect the service or other users.
-4. Data removed this way cannot be recovered. If you want to keep anything,
-   such as your own notes, results, or screenshots, save it yourself before the
-   exercise ends. UUG.AI has no obligation to keep, return, or export any of
-   your data.
-5. Only upload data to the Exercise Environment that you need for the exercise
-   and that you are entitled to use. Do not upload special categories of
-   personal data, or confidential information from you or anyone else.
-6. UUG.AI may change, suspend, or withdraw any part of the Exercise
-   Environment at any time, without notice.
+1. **Free, temporary subscription.** For the exercise, UUG.AI gives you a free
+   subscription to a Hub tenant. The subscription is only for the duration of
+   the exercise, for the purpose in section 2. It does not entitle you to any
+   continued service, paid plan, or service level.
+2. **End of the exercise.** When the exercise ends, UUG.AI revokes your
+   subscription. After that:
+   - recordings and the data linked to them, such as markers, detections,
+     analysis results, and workflow runs, are automatically deleted from Hub;
+     and
+   - video files are deleted from storage no later than 30 days after they
+     were recorded.
+3. **Closing your account is your responsibility.** Revoking the subscription
+   does not close your Hub account. Your account and its configuration, such
+   as workflows, devices, sites, and access tokens, remain until you close the
+   account yourself with Hub's close-account feature. Closing the account
+   deletes the account and the data that remains in it, including your video
+   files, immediately. When you finish the exercise, close your account; if you
+   keep it for now, at least disable your workflows and delete your access
+   tokens.
+4. **Retained copies.** Some copies are kept for a limited time after
+   deletion, and are then deleted automatically:
+   - **Backups** are kept for up to 30 days, only for disaster recovery, and
+     are not accessed for any other purpose. If a backup is ever restored, data
+     that was deleted after that backup was made is deleted again.
+   - **Audit logs**, which record actions in Hub for security and
+     accountability, are kept for up to 400 days.
+
+   Data may also be kept longer where the law requires it.
+5. **Your rights.** You can ask UUG.AI at any time, through your tutor, to
+   delete your account and personal data, or to exercise your other rights
+   under data protection law.
+6. **Save what you want to keep.** Deleted data cannot be recovered. If you
+   want to keep anything, such as your own notes, results, or screenshots,
+   save it yourself before the exercise ends or before you close your account.
+   UUG.AI has no obligation to keep, return, or export any of your data.
+7. **Only upload what you need.** Only upload data to the Exercise Environment
+   that you need for the exercise and that you are entitled to use. Do not
+   upload special categories of personal data, such as health data, or
+   confidential information from you or anyone else.
+8. **Changes and suspension.** UUG.AI may change, suspend, or withdraw any part
+   of the Exercise Environment at any time, without notice. UUG.AI may also
+   revoke your subscription or suspend your account earlier, for example if
+   you breach these terms, if the exercise is abandoned, or to protect the
+   service or other users.
 
 ## 7. Your responsibilities
 

@@ -12,8 +12,9 @@
 > - **UUG.AI does not take ownership of your results or modifications** and
 >   is not responsible for them.
 > - **Your Hub subscription is free and temporary.** When the exercise ends,
->   all data is removed from the Hub tenant by closing your account, so save
->   anything you want to keep beforehand.
+>   UUG.AI revokes it and your recordings are deleted. **Close your Hub account
+>   yourself** when you are done; this deletes your account and all remaining
+>   data immediately. Save anything you want to keep beforehand.
 > - Everything is provided **"as is"**, without any warranty, and you use it
 >   at your own risk.
 
