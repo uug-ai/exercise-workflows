@@ -1,9 +1,9 @@
 # Augment Vision Workflow Exercise
 
 > [!IMPORTANT]
-> **This repository is for learning and skills development only.** By using
-> it, you agree to the [learning-use licence and disclaimer](LICENSE.md). In
-> short:
+> **This repository is for learning and skills development only.** You must
+> be 18 or older to use it. By using it, you agree to the
+> [learning-use licence and disclaimer](LICENSE.md). In short:
 >
 > - **Keep your work private.** If you put your work online, use a
 >   **private** repository. Do not use GitHub's **Fork** button, because forks
