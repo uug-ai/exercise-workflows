@@ -9,6 +9,9 @@
 >   **private** repository. Do not use GitHub's **Fork** button, because forks
 >   of a public repository are public. See
 >   [How to keep your copy private](LICENSE.md#how-to-keep-your-copy-private).
+> - **Hand in at [submit.uug.ai](https://submit.uug.ai)**, never in this
+>   repository: issues, pull requests and forks here are public. See
+>   [Hand in your work](#hand-in-your-work).
 > - **UUG.AI does not take ownership of your results or modifications** and
 >   is not responsible for them.
 > - **Your Hub subscription is free and temporary.** When the exercise ends,
@@ -17,6 +20,9 @@
 >   data immediately. Save anything you want to keep beforehand.
 > - Everything is provided **"as is"**, without any warranty, and you use it
 >   at your own risk.
+>
+> _Terms updated on 23 November 2026: section 7 describes handing in at
+> submit.uug.ai, what is stored, who sees it and when it is deleted._
 
 ![Augment Vision recording with a pedestrian classification](docs/images/hub-workflow-exercise-header.jpg)
 
@@ -739,9 +745,9 @@ class, or a domain-specific event. Define what a useful result looks like in
 Hub, decide what must change, and explain your choices. Then implement and test
 your extension with both a positive example and a counterexample.
 
-Discuss your results with the tutor: show the baseline and your extension,
-explain the trade-offs, and identify limitations or cases where your approach
-could fail. The goal is your reasoning and an independently verified result,
+[Hand in](#hand-in-your-work) your work and discuss your results with the
+tutor: show the baseline and your extension, explain the trade-offs, and
+identify limitations or cases where your approach could fail. The goal is your reasoning and an independently verified result,
 not reproducing the reference implementation unchanged.
 
 Useful references:
@@ -749,6 +755,37 @@ Useful references:
 - [Custom workflow stage tutorial](https://learn.uug.ai/tutorials/hub/custom-workflow-stage/)
 - [Marker contract](https://learn.uug.ai/docs/hub/workflows/ingest/blocks/marker/)
 - [Production reference service](https://github.com/uug-ai/hub-loitering)
+
+## Hand in your work
+
+Hand in at **[submit.uug.ai](https://submit.uug.ai)**, signed in with the Hub
+account you use for the exercise. Only you and UUG.AI's tutors can see what
+you hand in; your tutor replies there and by email, and you can answer and add
+changes until the review is finished.
+
+1. Keep your code in a **private** repository (see
+   [How to keep your copy private](LICENSE.md#how-to-keep-your-copy-private))
+   and invite your tutor, or attach it as a `.zip` or `.tar.gz`.
+2. On submit.uug.ai choose **Hand in** and fill in:
+   - the **use case** you chose;
+   - a **handoff**: what you built and why, how to run it, what works, what
+     doesn't yet, and what you would do next;
+   - the **workflow run or recording IDs** from Hub that show it working;
+   - optionally the link to your private repository and files (up to 10, 25
+     MiB each: `.zip`, `.tar.gz`, `.pdf`, `.md`, `.txt`, `.png`, `.jpg`; link
+     videos in the text).
+3. Check that nothing you hand in contains credentials. Archives with a `.env`
+   file (other than `.env.example`), and text with a private key or a RabbitMQ
+   URL with a password, are refused.
+
+**Never** hand in by opening an issue or pull request in this repository, and
+never fork it: everything here is public, so other learners would see your
+work. What is stored and for how long is in
+[section 7 of the terms](LICENSE.md#7-handing-in-your-work): a hand-in is
+deleted 180 days after the review ends, or as soon as you delete it.
+
+If submit.uug.ai can't be reached, send the link to your private repository
+and your handoff in your tutor DM instead.
 
 ## Completion checklist
 
@@ -780,6 +817,7 @@ Useful references:
 - [ ] A no-person result resolves the workflow without changing the recording.
 - [ ] The baseline flow and its limitations are explained in your own words.
 - [ ] Your own extension is demonstrated with test evidence and justified design choices.
+- [ ] Your work is handed in at submit.uug.ai, with workflow run or recording IDs from Hub, and contains no credentials.
 - [ ] Exercise workflow is disabled and the exercise token is deleted after testing.
 
 ## Optional technical reference
