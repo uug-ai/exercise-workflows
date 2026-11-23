@@ -1,6 +1,6 @@
 # Learning-use licence and disclaimer
 
-_Last updated: 17 November 2026_
+_Last updated: 23 November 2026_
 
 > [!IMPORTANT]
 > **Summary.** This summary helps you read the terms. It does not replace them.
@@ -12,6 +12,9 @@ _Last updated: 17 November 2026_
 >   of a public repository is public.
 > - **UUG.AI does not take ownership of your results or modifications** and is
 >   not responsible for them.
+> - **Hand in your work at [submit.uug.ai](https://submit.uug.ai)**, signed in
+>   with your Hub account. Only you and UUG.AI's tutors can see it. It is
+>   deleted 180 days after the review ends, or as soon as you delete it.
 > - You get a **free Hub subscription for the exercise only**. When the
 >   exercise ends, UUG.AI revokes it and your recordings are deleted. **Close
 >   your Hub account yourself** to delete your account and everything left in
@@ -113,7 +116,7 @@ Terms of Service require for viewing the repository on GitHub.
 3. Your Work is not a UUG.AI product. Do not present it as made, approved, or
    endorsed by UUG.AI or Augment Vision.
 4. You may use Your Contributions on their own, without any Materials, as you
-   see fit, subject to sections 7 and 8.
+   see fit, subject to sections 8 and 9.
 5. If you choose to submit an issue, pull request, comment, or other feedback
    to a UUG.AI repository, you confirm that you have the right to do so. You
    also grant UUG.AI a perpetual, worldwide, royalty-free, irrevocable licence
@@ -178,7 +181,40 @@ Terms of Service require for viewing the repository on GitHub.
    you breach these terms, if the exercise is abandoned, or to protect the
    service or other users.
 
-## 7. Your responsibilities
+## 7. Handing in your work
+
+1. **Where.** You hand in your work at [submit.uug.ai](https://submit.uug.ai),
+   signed in with the Hub account you use for the exercise. A hand-in can
+   contain a description of your work, the use case you chose, workflow run or
+   recording IDs from Hub, a link to your private repository, and files. You
+   and your tutor can then reply to each other on the same page.
+2. **What is stored.** UUG.AI stores what you hand in and every reply, the
+   files attached to them, and your Hub account's ID, username, email address
+   and name. Text is stored in UUG.AI's database and files in private storage;
+   neither is public.
+3. **Who can see it.** You, and UUG.AI's tutors and staff who review hand-ins.
+   Tutors are told about new hand-ins and replies by email and in UUG.AI's
+   internal chat, with an excerpt of your text. Other learners cannot see
+   your hand-ins.
+4. **Licence to review.** You grant UUG.AI a non-exclusive, royalty-free
+   licence to store, copy and read what you hand in, only to review it and
+   give you feedback, for as long as it is kept. Handing in does not transfer
+   ownership: section 5.1 still applies. It is not a submission to a UUG.AI
+   repository under section 5.5.
+5. **No credentials or personal data.** Do not hand in passwords, access
+   tokens, private keys, `.env` files or other credentials, or personal data
+   you are not entitled to share. submit.uug.ai refuses some of these, such as
+   `.env` files in archives and private keys in text, but you remain
+   responsible for what you hand in. Section 6.7 also applies.
+6. **Retention.** A hand-in, its replies and its files are deleted 180 days
+   after your tutor marks it reviewed or you withdraw it. You can delete a
+   hand-in yourself at any time on its page; it is deleted immediately. To
+   have all your hand-ins deleted, ask your tutor. Closing your Hub account
+   does not delete your hand-ins: delete them first, or ask your tutor.
+   Section 6.4 applies to backups.
+7. **Your rights.** Section 6.5 applies to the data of your hand-ins too.
+
+## 8. Your responsibilities
 
 You are responsible for the following:
 
@@ -194,7 +230,7 @@ You are responsible for the following:
 - **Exercise Environment.** Use the Exercise Environment only for the exercise
   and follow any instructions from your tutor.
 
-## 8. Third-party components
+## 9. Third-party components
 
 The Materials use, or download during setup, third-party software and models
 that have their own licences. Examples include Go modules, OpenCV, ONNX
@@ -202,7 +238,7 @@ Runtime, and the YOLO11n model published by Ultralytics under the AGPL-3.0
 licence. Those licences, not these terms, govern the third-party components.
 You are responsible for complying with them.
 
-## 9. No warranty
+## 10. No warranty
 
 To the maximum extent permitted by applicable law, the UUG.AI Parties provide
 the Materials and the Exercise Environment **"as is"** and **"as available"**,
@@ -213,7 +249,7 @@ availability. UUG.AI does not
 warrant that the Materials are complete, correct, or up to date, or that they
 will produce any particular result.
 
-## 10. Limitation of liability
+## 11. Limitation of liability
 
 To the maximum extent permitted by applicable law, the UUG.AI Parties are not
 liable for any direct, indirect, incidental, special, consequential,
@@ -230,27 +266,27 @@ excluded or limited under applicable law. This includes liability for fraud,
 for intentional misconduct, for death or personal injury caused by
 negligence, and liability under mandatory consumer protection law.
 
-## 11. Indemnity
+## 12. Indemnity
 
 To the extent permitted by applicable law, you will indemnify the UUG.AI
 Parties against any third-party claim, and the resulting losses, damages, and
 reasonable costs, that arises from Your Work, from your use of the Materials
 or the Exercise Environment, or from your breach of these terms.
 
-## 12. No other relationship or obligation
+## 13. No other relationship or obligation
 
 Using the Materials or completing the exercise does not create any
 employment, contractor, partnership, agency, or other relationship between you
 and UUG.AI. It does not entitle you to payment, certification, or any offer.
 UUG.AI has no obligation to provide support, feedback, accounts, or updates.
 
-## 13. Trademarks
+## 14. Trademarks
 
 These terms grant no rights to use the names, logos, or trademarks of UUG.AI,
 Augment Vision, Kerberos, or Hub. You may use them only to refer accurately to
 the exercise and the products it uses.
 
-## 14. Termination
+## 15. Termination
 
 This licence ends automatically if you breach these terms. UUG.AI may also
 end it at any time.
@@ -259,9 +295,9 @@ When the licence ends, you must stop using the Materials and delete your
 copies of them. You may keep Your Contributions, as long as they do not
 contain any Materials.
 
-Sections 4 to 13 and section 15 survive the end of the licence.
+Sections 4 to 14 and section 16 survive the end of the licence.
 
-## 15. General
+## 16. General
 
 - UUG.AI may update these terms by publishing a new version in this
   repository, with a new "Last updated" date. UUG.AI announces material
