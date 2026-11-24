@@ -7,7 +7,7 @@ require (
 	github.com/sirupsen/logrus v1.9.4
 	github.com/uug-ai/ingest v1.0.15
 	github.com/uug-ai/models v1.7.54
-	github.com/yalue/onnxruntime_go v1.36.0
+	github.com/yalue/onnxruntime_go v1.38.0
 	gocv.io/x/gocv v0.31.0
 )
 

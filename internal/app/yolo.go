@@ -48,7 +48,7 @@ func newYOLOPersonDetector() (*yoloPersonDetector, error) {
 	if err != nil {
 		return nil, err
 	}
-	runtimePath, err := regularFileFromEnv("ONNXRUNTIME_SHARED_LIBRARY", "/opt/onnxruntime/lib/libonnxruntime.so.1.29.0")
+	runtimePath, err := regularFileFromEnv("ONNXRUNTIME_SHARED_LIBRARY", "/opt/onnxruntime/lib/libonnxruntime.so.1.31.0")
 	if err != nil {
 		return nil, err
 	}
