@@ -216,11 +216,12 @@ investigating or extending the stage:
 | `LOG_OUTPUT` | `text` or `json`; default `text` |
 
 The [dev-container Dockerfile](.devcontainer/Dockerfile) installs OpenCV 4.6,
-ONNX Runtime 1.29, and the official YOLO11n ONNX model. The model and runtime
-downloads are pinned by SHA-256 checksums.
+ONNX Runtime 1.31 from the `Microsoft.ML.OnnxRuntime` NuGet package, and the
+official YOLO11n ONNX model. The model and runtime downloads are pinned by
+SHA-256 checksums.
 
 Running outside the dev container requires Go 1.25.8+, OpenCV 4.6, ONNX Runtime
-1.29, and a compatible YOLO11n ONNX model. The dev container is the recommended
+1.31, and a compatible YOLO11n ONNX model. The dev container is the recommended
 environment.
 
 ## Command-line HTTP callback
